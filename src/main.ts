@@ -49,6 +49,7 @@ class App {
     });
     this.renderer = new Renderer(this.ui.canvas);
     this.renderer.loadDecor();
+    this.renderer.loadGround();
 
     this.engine.onEvent = (e) => this.audio.play(EVENT_SFX[e]);
 

@@ -8,6 +8,11 @@ export interface DecorImg {
   h: number; // display height as a fraction of a cell
 }
 
+export interface GroundTiles {
+  grass: HTMLImageElement;
+  dirt: HTMLImageElement;
+}
+
 export interface Tileset {
   /** Fill the entire board background (grass / sky / theme base). */
   drawBackground(ctx: CanvasRenderingContext2D, W: number, H: number): void;
@@ -30,6 +35,8 @@ export interface Tileset {
   ): void;
   /** Optional real decor sprites; when present, drawDecor uses them. */
   decorImages?: DecorImg[];
+  /** Optional real ground tiles; when present, the grid is filled with them. */
+  ground?: GroundTiles;
 }
 
 // ─── Seeded pseudo-random (deterministic per cell) ─────────────────
@@ -57,6 +64,7 @@ function cellSeed(c: number, r: number): number {
 
 class FarmTileset implements Tileset {
   decorImages?: DecorImg[];
+  ground?: GroundTiles;
   drawBackground(ctx: CanvasRenderingContext2D, W: number, H: number) {
     // Base grass gradient — warm, inviting greens
     const bg = ctx.createLinearGradient(0, 0, 0, H);
@@ -366,6 +374,22 @@ export class Renderer {
     }
   }
 
+  /** Best-effort load of real ground tiles (grass + dirt); swaps into the tileset. */
+  loadGround() {
+    const grass = new Image();
+    const dirt = new Image();
+    let done = 0;
+    const finish = () => {
+      if (++done === 2 && grass.naturalWidth && dirt.naturalWidth) {
+        this.tileset.ground = { grass, dirt };
+      }
+    };
+    grass.onload = finish;
+    dirt.onload = finish;
+    grass.src = `${DECOR_BASE}assets/img/tile_grass.png`;
+    dirt.src = `${DECOR_BASE}assets/img/tile_dirt.png`;
+  }
+
   draw(e: GameEngine, now: number) {
     const dt = Math.min(0.05, this.prevTime ? now - this.prevTime : 0.016);
     this.prevTime = now;
@@ -385,17 +409,46 @@ export class Renderer {
     // Build path-set for fast lookup
     const pathSet = new Set(L.path.map(key));
 
-    // 1. Background
-    this.tileset.drawBackground(ctx, W, H);
+    const g = this.tileset.ground;
+    const haveGround =
+      !!g &&
+      g.grass.complete &&
+      g.dirt.complete &&
+      g.grass.naturalWidth > 0 &&
+      g.dirt.naturalWidth > 0;
 
-    // 2. Cells (path tiles + grass decor)
+    // 1+2. Ground: tile the whole canvas with grass, lay dirt on path cells.
+    //       Falls back to procedural background/cells when tiles aren't loaded.
+    if (haveGround && g) {
+      const smooth = ctx.imageSmoothingEnabled;
+      ctx.imageSmoothingEnabled = false; // crisp pixel tiles
+      for (let y = 0; y < H; y += cell) {
+        for (let x = 0; x < W; x += cell) {
+          ctx.drawImage(g.grass, x, y, cell, cell);
+        }
+      }
+      for (let r = 0; r < L.rows; r++) {
+        for (let c = 0; c < L.cols; c++) {
+          if (pathSet.has(`${c},${r}`)) {
+            ctx.drawImage(g.dirt, ox + c * cell, oy + r * cell, cell, cell);
+          }
+        }
+      }
+      ctx.imageSmoothingEnabled = smooth;
+    } else {
+      this.tileset.drawBackground(ctx, W, H);
+    }
+
+    // Per-cell: procedural cells (only when no ground tiles) + decor on grass.
     for (let r = 0; r < L.rows; r++) {
       for (let c = 0; c < L.cols; c++) {
         const px = ox + c * cell;
         const py = oy + r * cell;
         const sd = cellSeed(c, r);
         const isPath = pathSet.has(`${c},${r}`);
-        this.tileset.drawCell(ctx, isPath ? 'path' : 'grass', px, py, cell, sd);
+        if (!haveGround) {
+          this.tileset.drawCell(ctx, isPath ? 'path' : 'grass', px, py, cell, sd);
+        }
         if (!isPath) {
           this.tileset.drawDecor(ctx, px, py, cell, sd);
         }
