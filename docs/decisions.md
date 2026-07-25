@@ -129,3 +129,46 @@ URL + license + author in `assets/CREDITS.md` per asset.
 
 Everything else (MVP scope, CC0-only art, level count) I've defaulted above;
 redirect any of it freely.
+
+## ADR-0005 — Final decisions & build (2026-07-25) — RESOLVED
+
+All open questions answered; MVP built, verified, and deployed.
+
+- **ADR-0002 → Web adopted.** TypeScript + Vite 5 + HTML5 Canvas. Confirmed over
+  Python/pygame for the 4yo tablet audience (zero-install, native touch, URL
+  share). TypeScript delivers the type safety Python would have. *pygbag kept as
+  a future fallback only.*
+- **Theme → peacock 🦚 → cookie 🍪**, with farm-animal obstacles
+  (cow/pig/sheep/chicken) — per the kid's favourite animal.
+- **Special mechanic → "Shoo!" fan.** The peacock fans its feathers, shakes
+  wildly, and belts its call, scaring any farm animal in the 3-cell frontal arc.
+  This gives the game its own identity beyond a Lightbot clone and teaches
+  "turn to face, then act."
+- **MVP scope shipped:** 4 commands (Forward / Left / Right / Shoo!), big touch
+  palette, queued program strip, Run with step-by-step highlight + eased
+  animation, gentle bump (no harsh failure), win = confetti + overlay, 5 levels
+  of increasing difficulty.
+- **Deploy → GitHub Pages via Actions** (build_type = `workflow`; Vite
+  `base: '/lugame/'`). Live at **https://utsmok.github.io/lugame/**.
+
+### Art & sound — revised from ADR-0004
+
+- **Graphics:** emoji rendered on Canvas (no image assets) — consistent across
+  platforms, keeps the bundle ~7 KB JS gzipped. ADR-0004's CC0-sprite plan was
+  dropped: emoji look better for this audience than a mixed sprite set would.
+- **Sound:** procedural Web Audio for every SFX *except* the peacock call — a
+  bird's call can't be synthesized convincingly. `fan.mp3` = **Peacock2.ogg** by
+  **Secretlondon**, **CC BY-SA 3.0** (Wikimedia Commons), trimmed to the first
+  two of its three calls (1.8 s) + loudness normalization + fade. Attributed in
+  `public/assets/CREDITS.md`. The synthesized peacock call remains as a fallback
+  if the file is ever missing. *(ADR-0004's strict-CC0 policy was relaxed to
+  CC-BY-SA for this one asset, with attribution — the only real recording.)*
+- Tooling note: the host `ffmpeg` lacks `libvorbis`, so assets are `.mp3`
+  (`libmp3lame`); the engine expects `public/assets/audio/*.mp3`.
+
+### Verification
+
+- `tsc --noEmit` clean; `vite build` clean (19.3 KB JS / 6.84 KB gz).
+- Browser smoke test: Level 1 win + confetti confirmed; `fan.mp3` decodes
+  (1.8 s mono); fan mechanic (scare animal → reach cookie) confirmed manually.
+- Pages Actions run #30151046499: both build + deploy jobs green.
