@@ -238,6 +238,13 @@ export class GameEngine {
         this.emit('turn');
         break;
       case 'fan': {
+        // Shoo costs 1 energy on energy-enabled levels (eat cookies to do it more).
+        if (this.energyEnabled && this.energy <= 0) {
+          // too tired — feedback nudge, no scare, queue continues
+          this.bumpShake = 1;
+          this.emit('bump');
+          break;
+        }
         const cells = fanCells(this.robot.pos, this.robot.dir);
         let scaredAny = false;
         for (const an of this.animals) {
@@ -247,6 +254,7 @@ export class GameEngine {
             scaredAny = true;
           }
         }
+        if (this.energyEnabled) this.energy--;
         this.fanT = 1;
         this.emit('fan');
         if (scaredAny) this.emit('flee');

@@ -616,3 +616,13 @@ canvas#board {
   justify-content: center;
 }
 .chip.big { width: 3.6rem; height: 3.6rem; font-size: 1.8rem; }
+
+/* badge pulses when the count changes */
+.chip-badge.pulse {
+  animation: badge-pop 0.36s ease;
+}
+@keyframes badge-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.5); background: var(--accent); }
+  100% { transform: scale(1); }
+}

@@ -438,6 +438,9 @@ export class Renderer {
     } else {
       this.tileset.drawBackground(ctx, W, H);
     }
+    // 2b. Tile borders — bevel gradient strokes so each cell reads as a distinct raised tile.
+    this.drawGrid(ctx, e, ox, oy, cell);
+
 
     // Per-cell: procedural cells (only when no ground tiles) + decor on grass.
     for (let r = 0; r < L.rows; r++) {
@@ -464,13 +467,17 @@ export class Renderer {
     // 5. Robot (peacock)
     this.drawRobot(ctx, e, cx, cy, cell, now);
 
-    // 5b. Energy pips HUD
+    // 5b. Energy pips — float above/below the peacock
     if (e.energyEnabled) {
       const radius = Math.max(6, cell * 0.12);
       const spacing = radius * 2.4;
       const totalW = (e.maxEnergy - 1) * spacing + radius * 2;
-      const px = ox + cell * 0.16;
-      const py = oy + cell * 0.16;
+      const rx = cx(e.robot.dc);
+      const ry = cy(e.robot.dr);
+      const aboveY = ry - cell * 0.46;
+      const belowY = ry + cell * 0.46;
+      const py = aboveY - radius * 1.4 < 0 ? belowY : aboveY;
+      const px = rx - totalW / 2;
       ctx.save();
       // backdrop pill
       ctx.fillStyle = 'rgba(0,0,0,0.35)';
@@ -478,7 +485,7 @@ export class Renderer {
       ctx.fill();
       // pips
       for (let i = 0; i < e.maxEnergy; i++) {
-        const cx2 = px + i * spacing;
+        const cx2 = px + i * spacing + radius;
         if (i < e.energy) {
           ctx.fillStyle = '#36c96a';
           ctx.beginPath();
@@ -494,6 +501,7 @@ export class Renderer {
       }
       ctx.restore();
     }
+
 
     // 5c. Error highlight
     if (e.phase === 'error') {
@@ -843,6 +851,35 @@ export class Renderer {
     ctx.arcTo(x, y, x + w, y, r);
     ctx.closePath();
   }
+
+  private drawGrid(
+    ctx: CanvasRenderingContext2D,
+    e: GameEngine,
+    ox: number,
+    oy: number,
+    cell: number,
+  ) {
+    const L = e.level;
+    const lw = Math.max(2, cell * 0.045);
+    const rr = Math.max(2, cell * 0.06);
+    ctx.lineWidth = lw;
+    for (let r = 0; r < L.rows; r++) {
+      for (let c = 0; c < L.cols; c++) {
+        const x = ox + c * cell;
+        const y = oy + r * cell;
+        // per-tile bevel: light top-left → dark bottom-right, so adjacent
+        // tiles read as distinct raised squares (light edge meets dark edge).
+        const grad = ctx.createLinearGradient(x, y, x + cell, y + cell);
+        grad.addColorStop(0, 'rgba(255,255,255,0.40)');
+        grad.addColorStop(0.5, 'rgba(0,0,0,0.30)');
+        grad.addColorStop(1, 'rgba(0,0,0,0.55)');
+        ctx.strokeStyle = grad;
+        this.roundRect(ctx, x + lw * 0.5, y + lw * 0.5, cell - lw, cell - lw, rr);
+        ctx.stroke();
+      }
+    }
+  }
+
 
   private spawnConfetti(W: number, H: number) {
     this.confetti = [];

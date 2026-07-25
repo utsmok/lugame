@@ -349,6 +349,7 @@ export class PaletteUI {
   private programOverlayGrid!: HTMLElement;
   private programOverlayClose!: HTMLButtonElement;
   private allChips: HTMLElement[] = [];
+  private prevGroups: { cmd: Command; len: number }[] = [];
 
   sync(e: GameEngine) {
     const sig = e.program.join(',');
@@ -386,12 +387,28 @@ export class PaletteUI {
       const empty = h('span', 'empty');
       empty.textContent = T.emptyHint;
       this.programEl.appendChild(empty);
+      this.prevGroups = [];
       return;
     }
     const groups = this.groupsOf(program);
-    this.renderChipsInto(this.programEl, groups, false);
-    this.renderChipsInto(this.programOverlayGrid, groups, true);
-    // keep the latest (right-most) chips in view
+    // overlay (big chips) — full rebuild
+    for (const g of groups) {
+      const chip = this.makeChip(g.cmd, g.start, g.len, true);
+      this.programOverlayGrid.appendChild(chip);
+      this.allChips.push(chip);
+    }
+    // compact row — rebuild, pulsing chips whose count just changed
+    const aligned = this.cmdsAligned(this.prevGroups, groups);
+    for (let k = 0; k < groups.length; k++) {
+      const g = groups[k];
+      const chip = this.makeChip(g.cmd, g.start, g.len, false);
+      this.programEl.appendChild(chip);
+      this.allChips.push(chip);
+      const pulse =
+        aligned && (k >= this.prevGroups.length || this.prevGroups[k].len !== g.len);
+      if (pulse) this.pulseBadge(chip);
+    }
+    this.prevGroups = groups.map((g) => ({ cmd: g.cmd, len: g.len }));
     this.programEl.scrollLeft = this.programEl.scrollWidth;
   }
 
@@ -425,31 +442,35 @@ export class PaletteUI {
     return groups;
   }
 
-  private renderChipsInto(
-    container: HTMLElement,
-    groups: { cmd: Command; start: number; len: number }[],
-    big: boolean,
-  ) {
-    for (const g of groups) {
-      if (g.len >= 3) {
-        // condense a run of 3+ into one chip with a count badge
-        const chip = this.makeChip(g.cmd, g.start, g.len, big);
-        container.appendChild(chip);
-        this.allChips.push(chip);
-      } else {
-        for (let k = 0; k < g.len; k++) {
-          const chip = this.makeChip(g.cmd, g.start + k, 1, big);
-          container.appendChild(chip);
-          this.allChips.push(chip);
-        }
-      }
+  /** True if prev and current groups share the same command at each index (safe to animate counts). */
+  private cmdsAligned(
+    a: { cmd: Command; len: number }[],
+    b: { cmd: Command; len: number }[],
+  ): boolean {
+    const n = Math.min(a.length, b.length);
+    for (let k = 0; k < n; k++) {
+      if (a[k].cmd !== b[k].cmd) return false;
     }
+    return true;
+  }
+
+  private pulseBadge(chip: HTMLElement) {
+    const badge = chip.querySelector('.chip-badge');
+    if (!(badge instanceof HTMLElement)) return;
+    badge.classList.remove('pulse');
+    void badge.offsetWidth; // force reflow so the animation restarts
+    badge.classList.add('pulse');
+    badge.addEventListener(
+      'animationend',
+      () => badge.classList.remove('pulse'),
+      { once: true },
+    );
   }
 
   private makeChip(cmd: Command, first: number, len: number, big: boolean): HTMLElement {
     const chip = h('div', `chip ${cmd}` + (big ? ' big' : ''));
     let inner = COMMAND_EMOJI[cmd];
-    if (len > 1) inner += `<span class="chip-badge">\u00D7${len}</span>`;
+    inner += `<span class="chip-badge">\u00D7${len}</span>`;
     inner += `<span class="chip-remove">\u2715</span>`;
     chip.innerHTML = inner;
     chip.dataset.first = String(first);
