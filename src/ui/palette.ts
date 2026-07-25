@@ -156,7 +156,32 @@ export class PaletteUI {
     this.overlay.appendChild(card);
     stage.append(canvas, this.overlay);
 
+    this.programWrap = h('div', 'program-wrap');
+    const programHead = h('div', 'program-head');
+    const programLabel = h('span', 'program-label');
+    programLabel.textContent = T.steps;
+    this.programExpandBtn = document.createElement('button');
+    this.programExpandBtn.className = 'program-expand';
+    this.programExpandBtn.innerHTML = '\u{1F4D6}';
+    this.programExpandBtn.setAttribute('aria-label', T.showAllSteps);
+    this.programExpandBtn.disabled = true;
+    programHead.append(programLabel, this.programExpandBtn);
     this.programEl = h('div', 'program');
+    this.programWrap.append(programHead, this.programEl);
+
+    // expandable overlay: all steps shown over the play area
+    this.programOverlay = h('div', 'overlay program-overlay');
+    const poCard = h('div', 'card program-card');
+    const poHead = h('div', 'lvl-select-header');
+    const poTitle = h('span', 'lvl-select-title');
+    poTitle.textContent = T.allSteps;
+    this.programOverlayClose = document.createElement('button');
+    this.programOverlayClose.className = 'lvl-select-close';
+    this.programOverlayClose.textContent = '\u2715';
+    poHead.append(poTitle, this.programOverlayClose);
+    this.programOverlayGrid = h('div', 'program-overlay-grid');
+    poCard.append(poHead, this.programOverlayGrid);
+    this.programOverlay.appendChild(poCard);
 
     const palette = h('div', 'palette');
     (['forward', 'left', 'right', 'fan'] as Command[]).forEach((cmd) => {
@@ -218,7 +243,8 @@ export class PaletteUI {
     root.append(
       topbar,
       stage,
-      this.programEl,
+      this.programWrap,
+      this.programOverlay,
       palette,
       controls,
       this.levelSelectOverlay,
@@ -244,6 +270,11 @@ export class PaletteUI {
     });
     this.settingsOverlay.addEventListener('click', (ev) => {
       if (ev.target === this.settingsOverlay) this.closeSettings();
+    });
+    this.programExpandBtn.addEventListener('click', () => this.openProgramOverlay());
+    this.programOverlayClose.addEventListener('click', () => this.closeProgramOverlay());
+    this.programOverlay.addEventListener('click', (ev) => {
+      if (ev.target === this.programOverlay) this.closeProgramOverlay();
     });
 
     return { el: root, canvas };
@@ -312,6 +343,13 @@ export class PaletteUI {
     });
   }
 
+  private programWrap!: HTMLElement;
+  private programExpandBtn!: HTMLButtonElement;
+  private programOverlay!: HTMLElement;
+  private programOverlayGrid!: HTMLElement;
+  private programOverlayClose!: HTMLButtonElement;
+  private allChips: HTMLElement[] = [];
+
   sync(e: GameEngine) {
     const sig = e.program.join(',');
     if (sig !== this.cachedProgram) {
@@ -319,8 +357,13 @@ export class PaletteUI {
       this.rebuildChips(e.program);
     }
     const active = e.phase === 'running';
-    this.chips.forEach((chip, i) => {
-      chip.classList.toggle('active', active && i === e.pc);
+    const errIdx = e.phase === 'error' ? e.errorStep : -1;
+    this.allChips.forEach((chip) => {
+      const first = Number(chip.dataset.first);
+      const last = Number(chip.dataset.last);
+      const inRange = (n: number) => n >= first && n <= last;
+      chip.classList.toggle('active', active && inRange(e.pc));
+      chip.classList.toggle('error', errIdx >= 0 && inRange(errIdx));
     });
 
     // editing OR held-on-error → controls stay usable (that's how you reset)
@@ -329,12 +372,7 @@ export class PaletteUI {
     this.runBtn.disabled = !(editing && hasProgram);
     this.clearBtn.disabled = !(editing && hasProgram);
     this.cmdButtons.forEach((b) => (b.disabled = !editing));
-
-    // highlight the failed step while held on error
-    const errIdx = e.phase === 'error' ? e.errorStep : -1;
-    this.chips.forEach((chip, i) =>
-      chip.classList.toggle('error', i === errIdx),
-    );
+    this.programExpandBtn.disabled = !hasProgram;
 
     const won = e.phase === 'won';
     this.overlay.classList.toggle('show', won);
@@ -342,24 +380,19 @@ export class PaletteUI {
 
   private rebuildChips(program: Command[]) {
     this.programEl.innerHTML = '';
-    this.chips = [];
+    this.programOverlayGrid.innerHTML = '';
+    this.allChips = [];
     if (program.length === 0) {
       const empty = h('span', 'empty');
       empty.textContent = T.emptyHint;
       this.programEl.appendChild(empty);
       return;
     }
-    for (let i = 0; i < program.length; i++) {
-      const cmd = program[i];
-      const chip = h('div', `chip ${cmd}`);
-      chip.innerHTML = `${COMMAND_EMOJI[cmd]}<span class="chip-remove">\u2715</span>`;
-      chip.dataset.index = String(i);
-      chip.addEventListener('click', () => {
-        if (this.cb.onRemoveChip) this.cb.onRemoveChip(i);
-      });
-      this.programEl.appendChild(chip);
-      this.chips.push(chip);
-    }
+    const groups = this.groupsOf(program);
+    this.renderChipsInto(this.programEl, groups, false);
+    this.renderChipsInto(this.programOverlayGrid, groups, true);
+    // keep the latest (right-most) chips in view
+    this.programEl.scrollLeft = this.programEl.scrollWidth;
   }
 
   private openLevelSelect() {
@@ -377,6 +410,62 @@ export class PaletteUI {
 
   private closeSettings() {
     this.settingsOverlay.classList.remove('show');
+  }
+
+  /** Group consecutive identical commands into runs (for condensing). */
+  private groupsOf(program: Command[]): { cmd: Command; start: number; len: number }[] {
+    const groups: { cmd: Command; start: number; len: number }[] = [];
+    for (let i = 0; i < program.length;) {
+      const cmd = program[i];
+      let len = 1;
+      while (i + len < program.length && program[i + len] === cmd) len++;
+      groups.push({ cmd, start: i, len });
+      i += len;
+    }
+    return groups;
+  }
+
+  private renderChipsInto(
+    container: HTMLElement,
+    groups: { cmd: Command; start: number; len: number }[],
+    big: boolean,
+  ) {
+    for (const g of groups) {
+      if (g.len >= 3) {
+        // condense a run of 3+ into one chip with a count badge
+        const chip = this.makeChip(g.cmd, g.start, g.len, big);
+        container.appendChild(chip);
+        this.allChips.push(chip);
+      } else {
+        for (let k = 0; k < g.len; k++) {
+          const chip = this.makeChip(g.cmd, g.start + k, 1, big);
+          container.appendChild(chip);
+          this.allChips.push(chip);
+        }
+      }
+    }
+  }
+
+  private makeChip(cmd: Command, first: number, len: number, big: boolean): HTMLElement {
+    const chip = h('div', `chip ${cmd}` + (big ? ' big' : ''));
+    let inner = COMMAND_EMOJI[cmd];
+    if (len > 1) inner += `<span class="chip-badge">\u00D7${len}</span>`;
+    inner += `<span class="chip-remove">\u2715</span>`;
+    chip.innerHTML = inner;
+    chip.dataset.first = String(first);
+    chip.dataset.last = String(first + len - 1);
+    chip.addEventListener('click', () => {
+      if (this.cb.onRemoveChip) this.cb.onRemoveChip(first + len - 1);
+    });
+    return chip;
+  }
+
+  private openProgramOverlay() {
+    this.programOverlay.classList.add('show');
+  }
+
+  private closeProgramOverlay() {
+    this.programOverlay.classList.remove('show');
   }
 
   private rebuildLevelGrid() {

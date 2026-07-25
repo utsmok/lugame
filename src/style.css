@@ -152,19 +152,49 @@ canvas#board {
 }
 
 /* ── Program queue (chips) ──────────────────────────────── */
-.program {
-  min-height: 4.6rem;
+.program-wrap {
   margin: 0.4rem 0.6rem;
-  padding: 0.5rem;
+  padding: 0.35rem 0.5rem 0.3rem;
   background: var(--panel);
   border-radius: 16px;
+  box-shadow: var(--shadow);
+}
+.program-head {
   display: flex;
-  flex-wrap: wrap;       /* wrap on mobile — never scroll horizontally */
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.2rem;
+}
+.program-label {
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+.program-expand {
+  border: none;
+  background: var(--panel-2);
+  color: var(--ink);
+  border-radius: 10px;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+.program-expand:disabled { opacity: 0.4; cursor: not-allowed; }
+.program {
+  display: flex;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 0.4rem;
-  box-shadow: var(--shadow);
-  align-content: flex-start;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-behavior: smooth;
+  padding: 0.1rem;
+  min-height: 3.6rem;
+  scrollbar-width: none; /* Firefox */
 }
+.program::-webkit-scrollbar { display: none; }
 
 .program .empty {
   color: var(--ink-dim);
@@ -253,10 +283,10 @@ canvas#board {
   filter: brightness(1.1);
 }
 
-.cmd.fwd { background: var(--fwd); }
-.cmd.left { background: var(--left); }
-.cmd.right { background: var(--right); }
-.cmd.fan { background: var(--fan); }
+.cmd.forward, .chip.forward { background: var(--fwd); }
+.cmd.left, .chip.left { background: var(--left); }
+.cmd.right, .chip.right { background: var(--right); }
+.cmd.fan, .chip.fan { background: var(--fan); }
 
 /* ── Controls row ───────────────────────────────────────── */
 .controls {
@@ -437,16 +467,14 @@ canvas#board {
   }
 
   /* right-column items auto-place into rows 2, 3, 4 of column 2 */
-  .program,
+  .program-wrap,
   .palette,
   .controls {
     grid-column: 2;
   }
 
-  .program {
+  .program-wrap {
     margin: 0;
-    flex-wrap: wrap;
-    min-height: unset;
   }
 }
 
@@ -558,3 +586,33 @@ canvas#board {
   from { box-shadow: 0 0 0 0 rgba(255, 93, 108, 0); }
   to { box-shadow: 0 0 12px 2px rgba(255, 93, 108, 0.65); }
 }
+
+/* ── Condensed chip count badge ────────────────────────── */
+.chip-badge {
+  position: absolute;
+  bottom: -3px;
+  right: -5px;
+  background: var(--bg);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 800;
+  border-radius: 999px;
+  padding: 0 0.32rem;
+  min-width: 1.15rem;
+  line-height: 1.15rem;
+  text-align: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+.chip .chip-remove { background: rgba(0, 0, 0, 0.5); }
+
+/* ── Expandable all-steps overlay ──────────────────────── */
+.program-overlay { z-index: 25; }
+.program-card { max-width: 560px; max-height: 82vh; overflow-y: auto; }
+.program-overlay-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.3rem;
+  justify-content: center;
+}
+.chip.big { width: 3.6rem; height: 3.6rem; font-size: 1.8rem; }

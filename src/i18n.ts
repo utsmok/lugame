@@ -7,6 +7,9 @@ export const T = {
 
   // program queue
   emptyHint: 'Tik op de knoppen hieronder om stappen toe te voegen…',
+  steps: 'Stappen',
+  showAllSteps: 'Toon alle stappen',
+  allSteps: 'Alle stappen',
 
   // controls
   run: '▶ Start',

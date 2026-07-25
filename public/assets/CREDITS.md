@@ -6,6 +6,7 @@
 | --- | --- | --- | --- | --- |
 | `audio/fan.mp3` | peacock call (the "Shoo!" special) | [Peacock2.ogg](https://commons.wikimedia.org/wiki/File:Peacock2.ogg) — Wikimedia Commons | [Secretlondon](https://commons.wikimedia.org/wiki/User:Secretlondon) | **CC BY-SA 3.0** |
 | `audio/music.mp3` | background music (loop) | "Carefree" — [incompetech.com](https://incompetech.com/music/royalty-free/music.html) | [Kevin MacLeod](https://incompetech.com) | **CC BY 4.0** |
+| `audio/collect.mp3` | cookie-eat crunch | [7 Eating Crunches](https://opengameart.org/content/7-eating-crunches) — OpenGameArt | [StarNinjas](https://opengameart.org/users/starninjas) | **CC0** |
 
 > **Attribution (required by the license):** "Peacock call" by Secretlondon is
 > licensed under CC BY-SA 3.0 via Wikimedia Commons.
@@ -15,10 +16,11 @@
 
 All other sound effects — `step`, `turn`, `flee`, `win`, `bump`, `click` — are
 synthesized procedurally at runtime via the Web Audio API
-(`src/game/audio.ts`); no asset files are needed for them. A peacock's call
-can't be synthesized convincingly, so the call is the one recorded asset. To
-override any procedural sound, drop a matching `*.mp3` into this folder — the
-engine auto-loads it on first interaction.
+(`src/game/audio.ts`); no asset files are needed for them. The peacock call and
+the cookie-eat crunch (`collect.mp3`) are real recordings (a crisp procedural
+crunch remains as the fallback if the file is missing). To override any
+procedural sound, drop a matching `*.mp3` into this folder — the engine
+auto-loads it on first interaction.
 
 ## Graphics
 

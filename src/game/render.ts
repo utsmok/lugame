@@ -592,6 +592,22 @@ export class Renderer {
     }
     return parts;
   }
+  private makeTrailSparkleParticles(): Sparkle['particles'] {
+    const parts: Sparkle['particles'] = [];
+    const colors = ['#ffd34e', '#fff5aa', '#4ea8ff', '#ffffff'];
+    for (let i = 0; i < 5; i++) {
+      const ang = Math.random() * Math.PI * 2;
+      parts.push({
+        dx: Math.cos(ang) * 0.6,
+        dy: -Math.abs(Math.sin(ang)) * 0.8 - 0.3, // bias upward
+        size: 1.5 + Math.random() * 3,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        ang,
+        speed: 10 + Math.random() * 20,
+      });
+    }
+    return parts;
+  }
 
   private drawSparkle(
     ctx: CanvasRenderingContext2D,
@@ -676,8 +692,11 @@ export class Renderer {
     const r = e.robot;
     let x = cx(r.dc);
     let y = cy(r.dr);
+    let scaleX = 1;
+    let scaleY = 1;
+    let rot = 0;
 
-    // fan: expanding ring of feather-eyes + wild shake + grow
+    // ── Fan feather-eye ring (drawn in world space before transform) ──
     if (e.fanT > 0) {
       const p = 1 - e.fanT;
       const radius = cell * (0.5 + p * 1.05);
@@ -697,12 +716,9 @@ export class Renderer {
         ctx.fill();
       }
       ctx.restore();
-      const amp = cell * 0.035 * e.fanT;
-      x += Math.sin(now * 50) * amp;
-      y += Math.cos(now * 47) * amp;
     }
 
-    // bump nudge — driven by bumpShake (works in both normal + easy mode)
+    // ── Bump nudge (world-space offset) ──
     if (e.bumpShake > 0) {
       const k = Math.sin(now * 55) * cell * 0.055 * e.bumpShake;
       const dv = dirVecNum(e.bumpDir);
@@ -710,15 +726,77 @@ export class Renderer {
       y += dv.y * k;
     }
 
-    const scale = 1 + e.fanT * 0.14;
-    ctx.save();
-    this.emoji(ctx, '🦚', x, y, cell * 0.66 * scale);
+    // ── Phase-driven animations (applied via canvas transform) ──
+    const phase = e.phase;
+    const fanning = e.fanT > 0;
 
-    // facing chevron
+    if (!fanning && (phase === 'editing' || phase === 'won')) {
+      // Idle breathe / bob
+      y += Math.sin(now * 2.2) * cell * 0.02;
+      const breathe = 1 + Math.sin(now * 1.6) * 0.015;
+      scaleX *= breathe;
+      scaleY *= breathe;
+    }
+
+    if (phase === 'running') {
+      // Walk bounce — buoyant hop
+      const hop = Math.abs(Math.sin(now * 7.5));
+      y -= hop * cell * 0.05;
+      // Squash/stretch
+      scaleY *= 1 - hop * 0.06;
+      scaleX *= 1 + hop * 0.04;
+      // Rotational wobble
+      rot += Math.sin(now * 9) * 0.05;
+
+      // Trailing sparkles — low prob each frame, spawn into sparkle map
+      if (Math.random() < 0.04) {
+        const dirRad = (r.ddir * Math.PI) / 180;
+        // Behind the peacock (opposite facing)
+        const sx = x - Math.sin(dirRad) * cell * 0.3;
+        const sy = y + Math.cos(dirRad) * cell * 0.3;
+        // Use a negative-keyed entry so it never collides with goal sparkles
+        const trailKey = -(this.sparkles.size + 1);
+        this.sparkles.set(trailKey, {
+          x: sx,
+          y: sy,
+          life: 0.6,
+          particles: this.makeTrailSparkleParticles(),
+        });
+      }
+    }
+
+    if (fanning) {
+      // Fan grow pulse + spin wobble
+      const fanScale = 1 + e.fanT * 0.18;
+      scaleX *= fanScale;
+      scaleY *= fanScale;
+      rot += Math.sin(now * 30) * 0.12 * e.fanT;
+      // Existing fan shake (world-space high-freq jitter)
+      const amp = cell * 0.035 * e.fanT;
+      x += Math.sin(now * 50) * amp;
+      y += Math.cos(now * 47) * amp;
+    }
+
+    if (phase === 'won') {
+      // Win celebration — happy bouncing + sway
+      y -= Math.abs(Math.sin(now * 6)) * cell * 0.09;
+      rot += Math.sin(now * 4) * 0.12;
+    }
+
+    // ── Draw peacock + chevron via single transform ──
+    ctx.save();
+    ctx.translate(x, y);
+    if (rot !== 0) ctx.rotate(rot);
+    if (scaleX !== 1 || scaleY !== 1) ctx.scale(scaleX, scaleY);
+
+    this.emoji(ctx, '🦚', 0, 0, cell * 0.66);
+
+    // Facing chevron (relative to transformed origin)
     const dirRad = (r.ddir * Math.PI) / 180;
     const cd = cell * 0.42;
-    const ax = x + Math.sin(dirRad) * cd;
-    const ay = y - Math.cos(dirRad) * cd;
+    const ax = Math.sin(dirRad) * cd;
+    const ay = -Math.cos(dirRad) * cd;
+    ctx.save();
     ctx.translate(ax, ay);
     ctx.rotate(dirRad);
     ctx.fillStyle = '#ffd34e';
@@ -729,7 +807,9 @@ export class Renderer {
     ctx.lineTo(-s * 0.85, s * 0.7);
     ctx.closePath();
     ctx.fill();
-    ctx.restore();
+    ctx.restore(); // chevron local transform
+
+    ctx.restore(); // peacock transform
   }
 
   // ─── Helpers ─────────────────────────────────────────────────

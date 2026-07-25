@@ -267,24 +267,45 @@ export class AudioBus {
 
   private chomp(t: number) {
     const ctx = this.ctx!;
-    // bandpass-filtered noise burst sweeping 1500→600Hz over ~0.09s (Q≈0.8)
+    // Crisp cookie-crunch: sharp broadband-ish noise burst (highpass + light
+    // bandpass) with a fast exponential decay — the "krunch" of a bite. Plus a
+    // tiny transient "crack" up top and a low jaw thud. (No downward sweep —
+    // sweeps sound like a whoop, not a crunch.)
     const src = ctx.createBufferSource();
-    src.buffer = this.getNoise(0.09);
-    const f = ctx.createBiquadFilter();
-    f.type = 'bandpass';
-    f.frequency.setValueAtTime(1500, t);
-    f.frequency.exponentialRampToValueAtTime(Math.max(1, 600), t + 0.09);
-    f.Q.value = 0.8;
+    src.buffer = this.getNoise(0.1);
+    const hp = ctx.createBiquadFilter();
+    hp.type = 'highpass';
+    hp.frequency.value = 1300;
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = 2100;
+    bp.Q.value = 0.7;
     const g = ctx.createGain();
-    g.gain.setValueAtTime(0.28, t);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
-    src.connect(f);
-    f.connect(g);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.32, t + 0.004); // sharp attack
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.1); // fast decay
+    src.connect(hp);
+    hp.connect(bp);
+    bp.connect(g);
     g.connect(this.master!);
     src.start(t);
-    src.stop(t + 0.09 + 0.03);
-    // low sine thud ~90Hz for jaw closure
-    this.blip(t, 90, 0.08, 'sine', 0.18);
+    src.stop(t + 0.13);
+    // crisp transient crack at the very start of the bite
+    const crack = ctx.createBufferSource();
+    crack.buffer = this.getNoise(0.025);
+    const cf = ctx.createBiquadFilter();
+    cf.type = 'highpass';
+    cf.frequency.value = 3600;
+    const cg = ctx.createGain();
+    cg.gain.setValueAtTime(0.26, t);
+    cg.gain.exponentialRampToValueAtTime(0.0001, t + 0.025);
+    crack.connect(cf);
+    cf.connect(cg);
+    cg.connect(this.master!);
+    crack.start(t);
+    crack.stop(t + 0.035);
+    // low jaw-closure thud
+    this.blip(t, 95, 0.09, 'sine', 0.2);
   }
 
   // The signature: a peacock's two-tone wailing call "ah-AAAAH".
