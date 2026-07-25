@@ -32,6 +32,7 @@ export const en: Translation = {
   myLevels: 'My levels',
   levelWord: 'Level',
   deleteCustomLevel: 'Delete level',
+  confirmDeleteLevel: 'Delete this level?',
 
   // topbar
   prevLevel: 'Previous level',

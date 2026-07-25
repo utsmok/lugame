@@ -61,7 +61,7 @@ class App {
   private audio = new AudioBus();
   private levels: Level[] = [...LEVELS, ...loadCustomLevels()];
   private levelIndex = 0;
-  private engine = new GameEngine(LEVELS[0]);
+  private engine!: GameEngine;
   private renderer!: Renderer;
   private ui!: PaletteUI;
   private theme!: ThemeConfig;
@@ -119,7 +119,11 @@ class App {
     this.ui.setSettings(this.settings);
 
     this.resize();
-    window.addEventListener('resize', () => this.resize());
+    let resizeTimer: number | undefined;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => this.resize(), 120);
+    });
     this.bindKeyboard();
     this.bindFirstGesture();
 

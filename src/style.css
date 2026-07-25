@@ -605,8 +605,8 @@ canvas#board {
 }
 .custom-lvl-pick.current { outline: 2px solid var(--accent); }
 .custom-lvl-del {
-  width: 34px;
-  height: 34px;
+  min-width: 48px;
+  min-height: 48px;
   flex: none;
   border: none;
   border-radius: 10px;

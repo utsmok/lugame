@@ -47,6 +47,94 @@ function h(tag: string, cls: string): HTMLElement {
   return el;
 }
 
+// --- modal focus-trap & dialog semantics (N5) ---
+interface ModalHandle {
+  el: HTMLElement;
+  previouslyFocused: HTMLElement | null;
+  dismissible: boolean;
+  onClose?: () => void;
+}
+
+const modalStack: ModalHandle[] = [];
+let modalKeydownInstalled = false;
+
+const FOCUSABLE_SEL = [
+  'a[href]',
+  'button:not([disabled])',
+  'textarea:not([disabled])',
+  'input:not([disabled])',
+  'select:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(',');
+
+function focusableIn(root: HTMLElement): HTMLElement[] {
+  return Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE_SEL)).filter(
+    (el) => el.offsetWidth > 0 || el.offsetHeight > 0,
+  );
+}
+
+function trapTab(modal: HTMLElement, ev: KeyboardEvent): void {
+  if (ev.key !== 'Tab') return;
+  const items = focusableIn(modal);
+  if (items.length === 0) {
+    ev.preventDefault();
+    modal.focus();
+    return;
+  }
+  const first = items[0];
+  const last = items[items.length - 1];
+  const active = document.activeElement;
+  if (ev.shiftKey && (active === first || !modal.contains(active))) {
+    ev.preventDefault();
+    last.focus();
+  } else if (!ev.shiftKey && (active === last || !modal.contains(active))) {
+    ev.preventDefault();
+    first.focus();
+  }
+}
+
+function onModalKeydown(ev: KeyboardEvent): void {
+  const top = modalStack[modalStack.length - 1];
+  if (!top) return;
+  if (ev.key === 'Escape' && top.dismissible) {
+    ev.preventDefault();
+    top.onClose?.();
+    return;
+  }
+  trapTab(top.el, ev);
+}
+
+/** Open `el` as a modal: capture the current focus, push it on the stack,
+ *  move focus into it, and trap Tab/Shift-Tab + Escape (when dismissible). */
+function openModal(
+  el: HTMLElement,
+  opts: { dismissible?: boolean; onClose?: () => void } = {},
+): void {
+  if (modalStack.some((m) => m.el === el)) return;
+  if (!modalKeydownInstalled) {
+    modalKeydownInstalled = true;
+    document.addEventListener('keydown', onModalKeydown);
+  }
+  const previouslyFocused =
+    document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  modalStack.push({
+    el,
+    previouslyFocused,
+    dismissible: opts.dismissible ?? false,
+    onClose: opts.onClose,
+  });
+  const first = focusableIn(el)[0];
+  (first ?? el).focus();
+}
+
+/** Close `el`: pop it from the stack and restore focus to its opener. */
+function closeModal(el: HTMLElement): void {
+  const idx = modalStack.findIndex((m) => m.el === el);
+  if (idx < 0) return;
+  const [handle] = modalStack.splice(idx, 1);
+  handle?.previouslyFocused?.focus();
+}
+
 export class PaletteUI {
   readonly canvas: HTMLCanvasElement;
   private root!: HTMLElement;
@@ -63,6 +151,7 @@ export class PaletteUI {
   private cachedProgram = '';
   private levelIndex = 0;
   private levelTotal = 1;
+  private wasWon = false;
 
   // level picker state
   private levelNames: string[] = [];
@@ -145,6 +234,10 @@ export class PaletteUI {
     const canvas = document.createElement('canvas');
     canvas.id = 'board';
     this.overlay = h('div', 'overlay');
+    this.overlay.setAttribute('role', 'dialog');
+    this.overlay.setAttribute('aria-modal', 'true');
+    this.overlay.setAttribute('aria-label', T.winMsg);
+    this.overlay.setAttribute('tabindex', '-1');
     const card = h('div', 'card');
     const emojiEl = h('div', 'emoji');
     emojiEl.textContent = T.winEmoji;
@@ -172,6 +265,10 @@ export class PaletteUI {
 
     // expandable overlay: all steps shown over the play area
     this.programOverlay = h('div', 'overlay program-overlay');
+    this.programOverlay.setAttribute('role', 'dialog');
+    this.programOverlay.setAttribute('aria-modal', 'true');
+    this.programOverlay.setAttribute('aria-label', T.allSteps);
+    this.programOverlay.setAttribute('tabindex', '-1');
     const poCard = h('div', 'card program-card');
     const poHead = h('div', 'lvl-select-header');
     const poTitle = h('span', 'lvl-select-title');
@@ -213,6 +310,10 @@ export class PaletteUI {
 
     // Level-select overlay
     this.levelSelectOverlay = h('div', 'overlay lvl-select-overlay');
+    this.levelSelectOverlay.setAttribute('role', 'dialog');
+    this.levelSelectOverlay.setAttribute('aria-modal', 'true');
+    this.levelSelectOverlay.setAttribute('aria-label', T.pickLevel);
+    this.levelSelectOverlay.setAttribute('tabindex', '-1');
     const lsCard = h('div', 'card lvl-select-card');
     const lsHeader = h('div', 'lvl-select-header');
     const lsTitle = h('span', 'lvl-select-title');
@@ -229,6 +330,10 @@ export class PaletteUI {
 
     // Settings overlay
     this.settingsOverlay = h('div', 'overlay settings-overlay');
+    this.settingsOverlay.setAttribute('role', 'dialog');
+    this.settingsOverlay.setAttribute('aria-modal', 'true');
+    this.settingsOverlay.setAttribute('aria-label', T.settingsTitle);
+    this.settingsOverlay.setAttribute('tabindex', '-1');
     const sCard = h('div', 'card settings-card');
     const sHeader = h('div', 'lvl-select-header');
     const sTitle = h('span', 'lvl-select-title');
@@ -266,10 +371,7 @@ export class PaletteUI {
     this.clearBtn.addEventListener('click', () => this.cb.onClear());
     this.prevBtn.addEventListener('click', () => this.cb.onPrevLevel());
     this.nextBtn.addEventListener('click', () => this.cb.onNextLevel());
-    this.overlayBtn.addEventListener('click', () => {
-      if (this.levelIndex + 1 < this.levelTotal) this.cb.onNextLevel();
-      else this.cb.onPlayAgain();
-    });
+    this.overlayBtn.addEventListener('click', () => this.advanceOrReplay());
     this.levelSelectBtn.addEventListener('click', () => this.openLevelSelect());
     this.editorBtn.addEventListener('click', () => this.cb.onOpenEditor?.());
     this.settingsBtn.addEventListener('click', () => this.openSettings());
@@ -431,7 +533,18 @@ export class PaletteUI {
     this.programExpandBtn.disabled = !hasProgram;
 
     const won = e.phase === 'won';
-    this.overlay.classList.toggle('show', won);
+    if (won !== this.wasWon) {
+      this.overlay.classList.toggle('show', won);
+      if (won) {
+        openModal(this.overlay, {
+          dismissible: true,
+          onClose: () => this.advanceOrReplay(),
+        });
+      } else {
+        closeModal(this.overlay);
+      }
+    }
+    this.wasWon = won;
   }
 
   private rebuildChips(program: Command[]) {
@@ -470,18 +583,34 @@ export class PaletteUI {
   private openLevelSelect() {
     this.rebuildLevelGrid();
     this.levelSelectOverlay.classList.add('show');
+    openModal(this.levelSelectOverlay, {
+      dismissible: true,
+      onClose: () => this.closeLevelSelect(),
+    });
   }
 
   private closeLevelSelect() {
     this.levelSelectOverlay.classList.remove('show');
+    closeModal(this.levelSelectOverlay);
   }
 
   private openSettings() {
     this.settingsOverlay.classList.add('show');
+    openModal(this.settingsOverlay, {
+      dismissible: true,
+      onClose: () => this.closeSettings(),
+    });
   }
 
   private closeSettings() {
     this.settingsOverlay.classList.remove('show');
+    closeModal(this.settingsOverlay);
+  }
+
+  /** Win-overlay action: advance, or replay on the last level. */
+  private advanceOrReplay() {
+    if (this.levelIndex + 1 < this.levelTotal) this.cb.onNextLevel();
+    else this.cb.onPlayAgain();
   }
 
   /** Group consecutive identical commands into runs (for condensing). */
@@ -538,10 +667,15 @@ export class PaletteUI {
 
   private openProgramOverlay() {
     this.programOverlay.classList.add('show');
+    openModal(this.programOverlay, {
+      dismissible: true,
+      onClose: () => this.closeProgramOverlay(),
+    });
   }
 
   private closeProgramOverlay() {
     this.programOverlay.classList.remove('show');
+    closeModal(this.programOverlay);
   }
 
   private rebuildLevelGrid() {
@@ -583,7 +717,9 @@ export class PaletteUI {
         del.addEventListener('click', (ev) => {
           ev.stopPropagation();
           const id = this.customIds[i];
-          if (id !== undefined) this.cb.onDeleteCustomLevel?.(id);
+          if (id !== undefined && window.confirm(T.confirmDeleteLevel)) {
+            this.cb.onDeleteCustomLevel?.(id);
+          }
         });
         row.append(pick, del);
         this.customListEl.appendChild(row);

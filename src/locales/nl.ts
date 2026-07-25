@@ -30,6 +30,7 @@ export const nl = {
   myLevels: 'Mijn levels',
   levelWord: 'Level',
   deleteCustomLevel: 'Verwijder level',
+  confirmDeleteLevel: 'Dit level verwijderen?',
 
   // topbar
   prevLevel: 'Vorig level',

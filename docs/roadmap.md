@@ -22,7 +22,9 @@ Both were flagged by multiple audits independently; both landed in the a11y fix 
 - ✅ **l10n** ([l10n-design.md](l10n-design.md), ADR-0007) — `src/locales/{nl,en,types}.ts` + Proxy `T` runtime + EN + language picker.
 - ✅ **theming** ([theming-design.md](theming-design.md), ADR-0006) — `src/game/theme.ts` + `ConfigTileset` + farm (pixel-identical) + desert (real CC0 assets) + theme picker + cross-theme animal fallback. Bundle 22.71 KB gz.
 - ✅ **a11y fix pass** — P0-1, P0-2, N1, N3, N4 done; touch targets (N2 partial); `:focus-visible` added.
-- 🟡 **Remaining this tier:** N2 finish (custom-delete `L-1` 34px + editor `±` `E-1` → 48px), N5 (overlay `role=dialog` + `aria-modal` + focus trap), N6 (delete-confirm), N7 (tsconfig flags), N8 (resize debounce + drop duplicate `GameEngine` init — mount guard already done by theming).
+- ✅ **Win confetti** (was dead code) — `render.ts` `spawnConfetti`/`stepConfetti`/`drawConfetti` existed but were never called; now wired on the `won` phase transition via `prevPhase`, particles culled past the canvas, reduced-motion gated. (commit `516e56a`)
+- ✅ **Directional peacock sprite** — replaces the 🦚 emoji with `public/assets/img/peacock-walk.png` (4 cols R,D,U,L × 3-frame walk cycle); direction map verified per-frame by pixel analysis. `peacock-folded.png` shipped but reserved (its Up/Down frames are ambiguous). (commit `516e56a`)
+- 🟢 **In-flight (parallel agents):** N2-finish, N5+N6, N8, B1 (`src/game/solve.ts`). N7 (tsconfig flags) runs after, sequentially (it cascades type errors into every file).
 
 ## Now — alpha polish (cheap · high-value · low-risk)
 

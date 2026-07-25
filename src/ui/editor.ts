@@ -102,8 +102,8 @@ const CSS = `
   gap: 6px;
 }
 .lugame-editor .ed-stepper button {
-  width: 32px;
-  height: 32px;
+  min-width: 48px;
+  min-height: 48px;
   border-radius: 8px;
   border: 2px solid var(--panel-2);
   background: var(--panel-2);
