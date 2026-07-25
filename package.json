@@ -1,0 +1,17 @@
+{
+  "name": "lugame",
+  "version": "0.1.0",
+  "description": "A grid programming game for young kids — guide a peacock to a cookie by queuing commands. Inspired by Lightbot, GCompris, Karel the Robot.",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "vite": "^5.4.0"
+  }
+}

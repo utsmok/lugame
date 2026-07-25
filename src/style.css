@@ -1,0 +1,281 @@
+:root {
+  --bg: #0b1020;
+  --panel: #161c33;
+  --panel-2: #1f2747;
+  --ink: #f5f7ff;
+  --ink-dim: #aab3d6;
+  --accent: #ffd34e;
+  --good: #36c96a;
+  --bad: #ff5d6c;
+  --fwd: #4ea8ff;
+  --left: #b06bff;
+  --right: #ff8a3d;
+  --fan: #1bbf9e;
+  --shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  font-family: "Baloo 2", "Comic Sans MS", "Nunito", system-ui, -apple-system,
+    "Segoe UI", Roboto, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--ink);
+  overscroll-behavior: none;
+  user-select: none;
+}
+
+#app {
+  height: 100%;
+}
+
+.app-shell {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.8rem;
+  background: var(--panel);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.topbar .title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+}
+
+.topbar .spacer {
+  flex: 1;
+}
+
+.lvl-btn {
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 50%;
+  border: none;
+  background: var(--panel-2);
+  color: var(--ink);
+  font-size: 1.4rem;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+}
+
+.lvl-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.stage {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  min-height: 0;
+}
+
+canvas#board {
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 18px;
+  background: #0e1530;
+  box-shadow: var(--shadow);
+  touch-action: none;
+}
+
+.program {
+  min-height: 4.6rem;
+  margin: 0.4rem 0.6rem;
+  padding: 0.5rem;
+  background: var(--panel);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  box-shadow: var(--shadow);
+}
+
+.program .empty {
+  color: var(--ink-dim);
+  font-size: 0.95rem;
+  padding: 0 0.4rem;
+}
+
+.chip {
+  flex: 0 0 auto;
+  width: 3.2rem;
+  height: 3.2rem;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+  background: var(--panel-2);
+  color: var(--ink);
+  position: relative;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.chip.active {
+  transform: translateY(-3px) scale(1.08);
+  box-shadow: 0 0 0 3px var(--accent), var(--shadow);
+}
+
+.palette {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+  padding: 0.4rem 0.6rem 0.2rem;
+}
+
+.cmd {
+  height: 4.2rem;
+  border-radius: 16px;
+  border: none;
+  font-size: 2rem;
+  color: #fff;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.1rem;
+  transition: transform 0.08s ease, filter 0.08s ease;
+}
+
+.cmd .label {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  opacity: 0.92;
+}
+
+.cmd:active {
+  transform: scale(0.94);
+  filter: brightness(1.1);
+}
+
+.cmd.fwd {
+  background: var(--fwd);
+}
+.cmd.left {
+  background: var(--left);
+}
+.cmd.right {
+  background: var(--right);
+}
+.cmd.fan {
+  background: var(--fan);
+}
+
+.controls {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 0.5rem;
+  padding: 0.2rem 0.6rem 0.6rem;
+}
+
+.btn {
+  height: 4rem;
+  border-radius: 16px;
+  border: none;
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: #fff;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  letter-spacing: 0.4px;
+}
+
+.btn:active {
+  transform: scale(0.97);
+}
+
+.btn.run {
+  background: var(--good);
+}
+
+.btn.clear {
+  background: var(--bad);
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(8, 12, 28, 0.55);
+  backdrop-filter: blur(2px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+.overlay.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.overlay .card {
+  background: var(--panel);
+  border-radius: 20px;
+  padding: 1.4rem 1.8rem;
+  text-align: center;
+  box-shadow: var(--shadow);
+  max-width: 80%;
+}
+
+.overlay .card .emoji {
+  font-size: 3.4rem;
+}
+
+.overlay .card .msg {
+  font-size: 1.3rem;
+  font-weight: 800;
+  margin: 0.4rem 0 0.9rem;
+}
+
+.overlay .card .again {
+  background: var(--accent);
+  color: #2a2300;
+  border: none;
+  border-radius: 14px;
+  padding: 0.7rem 1.2rem;
+  font-size: 1.1rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+}
+
+.hint {
+  text-align: center;
+  color: var(--ink-dim);
+  font-size: 0.85rem;
+  padding: 0 0.6rem 0.4rem;
+}
