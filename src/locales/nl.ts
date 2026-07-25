@@ -55,6 +55,7 @@ export const nl = {
   feathers: 'Veren',
   hint: 'Hint',
   par: 'Par',
+  replayTutorial: 'Toon uitleg',
   language: 'Taal',
 
   // themes (settings row + theme names + goal/animal labels per docs/theming-design.md)

@@ -17,8 +17,10 @@ import { LevelEditor } from './ui/editor';
 import {
   deleteCustomLevel,
   getClearedLevels,
+  isOnboarded,
   loadCustomLevels,
   markCleared,
+  markOnboarded,
   saveCustomLevel,
 } from './storage';
 import { T, getLocale, tr } from './i18n';
@@ -39,6 +41,7 @@ const EVENT_SFX: Record<GameEvent, SfxName> = {
 };
 
 const SETTINGS_KEY = 'lugame.settings';
+const INTRO_LEVELS: readonly number[] = [1, 2, 3];
 
 function loadSettings(): SettingsState {
   try {
@@ -120,6 +123,8 @@ class App {
       onToggleFreePlay: (b) => this.setSetting('freePlay', b),
       onSetTheme: (id) => this.setTheme(id),
       onHint: () => this.onHint(),
+      onOnboarded: () => this.onOnboarded(),
+      onReplayTutorial: () => this.onReplayTutorial(),
     });
     this.renderer = new Renderer(this.ui.canvas, this.theme);
     this.renderer.loadDecor();
@@ -132,6 +137,7 @@ class App {
     this.refreshLevelList();
     this.ui.setLevelInfo(this.levelIndex, this.levels.length, this.levelName(this.engine.level));
     this.updatePar();
+    this.maybeOnboard();
     this.ui.setSettings(this.settings);
 
     this.resize();
@@ -232,6 +238,7 @@ class App {
     this.wireAudio();
     this.ui.setLevelInfo(index, this.levels.length, this.levelName(this.engine.level));
     this.updatePar();
+    this.maybeOnboard();
   }
 
   /** 💡 hint: pulse the next optimal command given the program planned so far. */
@@ -248,6 +255,23 @@ class App {
   private updatePar() {
     const sol = solve(this.engine.level);
     this.ui.setPar(sol ? sol.length : null);
+  }
+
+  /** First encounter of an intro level (forward/turn/fan) auto-plays a
+   *  no-reading demo, once per mechanic. */
+  private maybeOnboard() {
+    const lvl = this.engine.level;
+    if (!INTRO_LEVELS.includes(lvl.id) || isOnboarded(lvl.id)) return;
+    window.setTimeout(() => this.ui.playOnboarding(solve(lvl) ?? []), 700);
+  }
+
+  private onOnboarded() {
+    markOnboarded(this.engine.level.id);
+  }
+
+  private onReplayTutorial() {
+    this.changeLevel(0);
+    window.setTimeout(() => this.ui.playOnboarding(solve(this.engine.level) ?? []), 450);
   }
 
   // ── editor ──────────────────────────────────────────────

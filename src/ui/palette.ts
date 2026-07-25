@@ -31,6 +31,8 @@ export interface PaletteCallbacks {
   onToggleFreePlay?: (on: boolean) => void;
   onSetTheme?: (id: string) => void;
   onHint?: () => void;
+  onOnboarded?: () => void;
+  onReplayTutorial?: () => void;
 }
 
 export interface SettingsState {
@@ -158,6 +160,8 @@ export class PaletteUI {
   private featherEl!: HTMLElement;
   private parEl!: HTMLElement;
   private hintBtn!: HTMLButtonElement;
+  private fingerEl?: HTMLElement;
+  private onboardGen = 0;
   private cachedProgram = '';
   private levelIndex = 0;
   private levelTotal = 1;
@@ -375,6 +379,15 @@ export class PaletteUI {
     );
     sBody.appendChild(this.buildLanguageRow());
     sBody.appendChild(this.buildThemeRow());
+    const replay = document.createElement('button');
+    replay.type = 'button';
+    replay.className = 'replay-btn';
+    replay.textContent = T.replayTutorial;
+    replay.addEventListener('click', () => {
+      this.closeSettings();
+      this.cb.onReplayTutorial?.();
+    });
+    sBody.appendChild(replay);
     sCard.append(sHeader, sBody);
     this.settingsOverlay.appendChild(sCard);
 
@@ -532,6 +545,70 @@ export class PaletteUI {
     void btn.offsetWidth; // restart the animation
     btn.classList.add('hint-pulse');
     btn.addEventListener('animationend', () => btn.classList.remove('hint-pulse'), { once: true });
+  }
+
+  /** No-reading onboarding: a translucent finger auto-taps each program tile
+   *  in turn, then Run, so a brand-new player sees the gameplay loop. Any real
+   *  pointer down cancels it (the player has taken over). */
+  async playOnboarding(program: ProgramTile[]) {
+    const gen = ++this.onboardGen;
+    const finger = this.ensureFinger();
+    finger.style.display = 'block';
+    const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+    const alive = () => gen === this.onboardGen;
+    const tap = async (btn: HTMLElement) => {
+      if (!alive()) return;
+      const r = btn.getBoundingClientRect();
+      finger.style.left = `${r.left + r.width / 2 - 22}px`;
+      finger.style.top = `${r.top + r.height / 2 - 6}px`;
+      await sleep(500);
+      if (!alive()) return;
+      finger.classList.add('press');
+      btn.classList.add('demo-tap');
+      await sleep(200);
+      finger.classList.remove('press');
+      btn.classList.remove('demo-tap');
+    };
+    const cancel = () => this.cancelOnboarding();
+    document.addEventListener('pointerdown', cancel);
+    for (const tile of program) {
+      if (!alive()) break;
+      const btn = this.cmdButtons.find((b) => b.className.includes(`cmd ${tile}`));
+      if (btn) {
+        await tap(btn);
+        if (alive()) this.cb.onAdd(tile);
+        await sleep(350);
+      }
+    }
+    document.removeEventListener('pointerdown', cancel);
+    if (!alive()) return;
+    await tap(this.runBtn);
+    if (!alive()) return;
+    this.cb.onRun();
+    this.finishOnboarding();
+  }
+
+  /** Cancel any running onboarding demo (player took over, or a replay). */
+  cancelOnboarding() {
+    this.onboardGen++;
+    this.finishOnboarding();
+  }
+
+  private finishOnboarding() {
+    if (this.fingerEl) this.fingerEl.style.display = 'none';
+    this.cb.onOnboarded?.();
+  }
+
+  private ensureFinger(): HTMLElement {
+    if (!this.fingerEl) {
+      const f = document.createElement('div');
+      f.className = 'onboard-finger';
+      f.textContent = '\u{1F446}';
+      f.setAttribute('aria-hidden', 'true');
+      document.body.appendChild(f);
+      this.fingerEl = f;
+    }
+    return this.fingerEl;
   }
 
   setSettings(s: SettingsState) {

@@ -57,6 +57,7 @@ export const en: Translation = {
   feathers: 'Feathers',
   hint: 'Hint',
   par: 'Par',
+  replayTutorial: 'Show tutorial',
   language: 'Language',
 
   // themes (settings row + theme names + goal/animal labels per docs/theming-design.md)

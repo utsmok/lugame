@@ -116,3 +116,23 @@ export function markCleared(id: number): void {
     /* storage may be unavailable */
   }
 }
+
+const ONBOARD_KEY = 'lugame.onboard';
+
+/** Has the player seen the no-reading demo for this level's mechanic? */
+export function isOnboarded(id: number): boolean {
+  try {
+    return localStorage.getItem(`${ONBOARD_KEY}.${id}`) === '1';
+  } catch {
+    return false;
+  }
+}
+
+/** Mark the demo for `id` as seen (so it won't auto-play again). */
+export function markOnboarded(id: number): void {
+  try {
+    localStorage.setItem(`${ONBOARD_KEY}.${id}`, '1');
+  } catch {
+    /* storage may be unavailable */
+  }
+}
