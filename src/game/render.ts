@@ -608,10 +608,11 @@ export class Renderer {
     ctx.lineWidth = lw;
     for (let r = 0; r < L.rows; r++) {
       for (let c = 0; c < L.cols; c++) {
+        if (!e.pathSet.has(`${c},${r}`)) continue; // bevel walkable tiles only — non-navigable cells stay flat
         const x = ox + c * cell;
         const y = oy + r * cell;
         // per-tile bevel: light top-left → dark bottom-right, so adjacent
-        // tiles read as distinct raised squares (light edge meets dark edge).
+        // path tiles read as a connected raised walkway (light edge meets dark edge).
         const grad = ctx.createLinearGradient(x, y, x + cell, y + cell);
         grad.addColorStop(0, 'rgba(255,255,255,0.40)');
         grad.addColorStop(0.5, 'rgba(0,0,0,0.30)');

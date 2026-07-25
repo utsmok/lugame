@@ -6,12 +6,12 @@ Drawn in code; not derived from any external asset:
 - `img/cactus.png` — small round barrel cactus
 - `img/cactus_tall.png` — tall saguaro cactus (single coherent sprite)
 - `img/tile_water.png` — oasis (water pool with sandy bank); used as decor
+- `img/tile_stone.png` — walkable path tile (packed earth, darker than sand so the route reads clearly)
 
 ## From source tile sheet
 Derived (per-tile cuts) from `additional_graphics/Desert-Tiles/DESERT TILES.png`:
 
 - `img/tile_sand.png` — sand ground
-- `img/tile_stone.png` — stone path
 - `img/bush.png` — bush
 - `img/rock.png` — rock
 - `img/skull.png` — skull
