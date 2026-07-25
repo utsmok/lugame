@@ -17,10 +17,10 @@
     { "file": "themes/desert/img/cactus_tall.png", "h": 0.8 },
     { "file": "themes/desert/img/bush.png", "h": 0.62 },
     { "file": "themes/desert/img/rock.png", "h": 0.55 },
-    { "file": "themes/desert/img/skull.png", "h": 0.4 },
-    { "file": "themes/desert/img/tile_sand2.png", "h": 0.3 }
+    { "file": "themes/desert/img/tile_water.png", "h": 0.75 },
+    { "file": "themes/desert/img/skull.png", "h": 0.4 }
   ],
-  "goalEmoji": "🌴",
+  "goalEmoji": "🍍",
   "fanColors": ["#ffd34e", "#ff9f43", "#ff6b6b", "#ffd34e", "#c98a3a"],
   "bgm": "themes/desert/audio/desert.mp3",
   "sfxOverrides": { "collect": "themes/desert/audio/crunch.mp3" },

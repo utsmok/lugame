@@ -1,17 +1,20 @@
 # Desert theme credits — lugame
 
-Tiles + decor sprites: `DESERT TILES.png` from `additional_graphics/Desert-Tiles/`.
+## Procedurally generated — original lugame art (MIT)
+Drawn in code; not derived from any external asset:
 
-| File | What |
-|---|---|
-| `img/tile_sand.png`, `tile_sand2.png` | sand ground |
-| `img/tile_stone.png` | stone/brick path |
-| `img/tile_water.png` | water (future obstacle) |
-| `img/cactus.png` | small round cactus |
-| `img/cactus_tall.png` | tall saguaro cactus |
-| `img/bush.png` | flowering bush |
-| `img/rock.png` | rock |
-| `img/skull.png` | skull |
+- `img/cactus.png` — small round barrel cactus
+- `img/cactus_tall.png` — tall saguaro cactus (single coherent sprite)
+- `img/tile_water.png` — oasis (water pool with sandy bank); used as decor
+
+## From source tile sheet
+Derived (per-tile cuts) from `additional_graphics/Desert-Tiles/DESERT TILES.png`:
+
+- `img/tile_sand.png` — sand ground
+- `img/tile_stone.png` — stone path
+- `img/bush.png` — bush
+- `img/rock.png` — rock
+- `img/skull.png` — skull
 
 **License** (per `Desert-Tiles/LICENSE.txt`): free to use and edit in any
 project; do not resell or claim as your own. Treated as permissive (CC0-like)
