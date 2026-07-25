@@ -12,7 +12,8 @@ export type SfxName =
   | 'flee'
   | 'win'
   | 'bump'
-  | 'click';
+  | 'click'
+  | 'collect';
 
 const BASE = import.meta.env.BASE_URL; // '/lugame/' in prod, '/' in dev
 const SFX_FILE: Record<SfxName, string> = {
@@ -23,6 +24,7 @@ const SFX_FILE: Record<SfxName, string> = {
   win: 'win.mp3',
   bump: 'bump.mp3',
   click: 'click.mp3',
+  collect: 'collect.mp3',
 };
 
 // Resolve the AudioContext constructor, including Safari's prefixed variant,
@@ -42,6 +44,13 @@ export class AudioBus {
   private noiseBuf: AudioBuffer | null = null;
   private overrides: Partial<Record<SfxName, AudioBuffer>> = {};
   private muted = false;
+
+  // --- background music ---
+  private musicEnabled = false;
+  private musicSource: AudioBufferSourceNode | null = null;
+  private musicGain: GainNode | null = null;
+  private musicBuf: AudioBuffer | null = null; // procedural loop or override
+  private musicOverride: AudioBuffer | null = null; // loaded music.mp3
 
   /** Lazily create the context (must follow a user gesture). */
   private ensure(): AudioContext | null {
@@ -69,6 +78,12 @@ export class AudioBus {
     if (this.master && this.ctx) {
       this.master.gain.value = m ? 0 : 0.7;
     }
+    // mute/unmute music without toggling the enabled flag
+    if (m) {
+      this.stopMusicImpl()
+    } else if (this.musicEnabled) {
+      this.startMusicImpl()
+    }
   }
   isMuted() {
     return this.muted;
@@ -91,7 +106,17 @@ export class AudioBus {
           /* procedural fallback stays in place */
         }
       }),
-    );
+    )
+    // best-effort: load background-music override
+    try {
+      const res = await fetch(`${BASE}assets/audio/music.mp3`)
+      if (res.ok) {
+        const buf = await res.arrayBuffer()
+        this.musicOverride = await ctx.decodeAudioData(buf)
+      }
+    } catch {
+      /* procedural tune stays in place */
+    }
   }
 
   play(n: SfxName) {
@@ -132,6 +157,12 @@ export class AudioBus {
         break;
       case 'click':
         this.blip(t, 660, 0.04, 'sine', 0.16);
+        break;
+      case 'collect':
+        // quick rising 3-note cookie-pickup chime (~150ms total)
+        this.blip(t, 523.25, 0.09, 'triangle', 0.28)
+        this.blip(t + 0.05, 659.25, 0.09, 'triangle', 0.30)
+        this.blip(t + 0.10, 783.99, 0.14, 'sine', 0.32)
         break;
     }
   }
@@ -286,5 +317,196 @@ export class AudioBus {
     osc1.stop(t + 0.55);
     osc2.stop(t + 0.55);
     lfo.stop(t + 0.55);
+  }
+  // ── background music public API ──────────────────────────────────────
+
+  startMusic() {
+    this.musicEnabled = true
+    if (!this.muted) this.startMusicImpl()
+  }
+
+  stopMusic() {
+    this.musicEnabled = false
+    this.stopMusicImpl()
+  }
+
+  setMusicEnabled(enabled: boolean) {
+    this.musicEnabled = enabled
+    if (enabled && !this.muted) {
+      this.startMusicImpl()
+    } else {
+      this.stopMusicImpl()
+    }
+  }
+
+  // ── music internals ──────────────────────────────────────────────────
+
+  private startMusicImpl() {
+    const ctx = this.ensure()
+    if (!ctx || !this.master || this.musicSource) return
+    if (ctx.state === 'suspended') void ctx.resume()
+
+    const buf = this.musicOverride || this.musicBuf || this.buildMusicBuffer()
+    if (!buf) return
+
+    this.musicGain = ctx.createGain()
+    this.musicGain.gain.value = 0.12 // well under SFX (0.7)
+    this.musicGain.connect(this.master)
+
+    const src = ctx.createBufferSource()
+    src.buffer = buf
+    src.loop = true
+    src.connect(this.musicGain)
+    src.start()
+    this.musicSource = src
+  }
+
+  private stopMusicImpl() {
+    if (this.musicSource) {
+      try { this.musicSource.stop() } catch { /* already stopped */ }
+      this.musicSource.disconnect()
+      this.musicSource = null
+    }
+    if (this.musicGain) {
+      this.musicGain.disconnect()
+      this.musicGain = null
+    }
+  }
+
+  /** Build a ~8 s procedural loop buffer: soft pad + gentle bass + melody. */
+  private buildMusicBuffer(): AudioBuffer | null {
+    const ctx = this.ctx
+    if (!ctx) return null
+
+    const sr = ctx.sampleRate
+    const dur = 8.0 // seconds per loop — comfortable for a simple tune
+    const len = Math.ceil(sr * dur)
+    const buf = ctx.createBuffer(2, len, sr) // stereo for slight width
+    const L = buf.getChannelData(0)
+    const R = buf.getChannelData(1)
+
+    // clear
+    L.fill(0)
+    R.fill(0)
+
+    // --- helper: additive synth into the buffer ---
+    const noteOn = (
+      ch: Float32Array,
+      freq: number,
+      start: number,
+      vol: number,
+      attack: number,
+      release: number,
+      type: 'sine' | 'triangle' | 'softsaw',
+    ) => {
+      const end = Math.min(start + release + attack, dur)
+      const si = Math.floor(start * sr)
+      const ei = Math.min(Math.ceil(end * sr), len)
+      const twoPiFreq = 2 * Math.PI * freq / sr
+      for (let i = si; i < ei; i++) {
+        const t = (i - si) / sr // local time within note
+        let env = 1
+        if (t < attack) env = t / attack
+        else if (t > release) {
+          const r = (t - release) / attack
+          env = Math.max(0, 1 - r * r) // smooth falloff
+        }
+        let s = 0
+        const ph = twoPiFreq * i
+        switch (type) {
+          case 'sine':
+            s = Math.sin(ph)
+            break
+          case 'triangle':
+            s = 2 * Math.abs(2 * ((ph / (2 * Math.PI)) % 1) - 1) - 1
+            break
+          case 'softsaw': // bandlimited-ish: fundamental + 2 falling harmonics
+            s = Math.sin(ph) + 0.5 * Math.sin(2 * ph) + 0.25 * Math.sin(3 * ph)
+            s /= 1.75
+            break
+        }
+        ch[i] += s * vol * env
+      }
+    }
+
+    // Tempo: 95 BPM → beat = 60/95 ≈ 0.632 s
+    const beat = 60 / 95
+    const bar = beat * 4
+
+    // Key of C major, gentle kid-friendly phrase (2 bars repeating)
+    // Melody (glockenspiel-like, bright sine, soft envelope)
+    const melody: [number, number, number][] = [
+      // [time_offset, midi_note_number (69=A4), duration_in_beats]
+      [0 * beat, 72, 0.5],   // C5
+      [0.5 * beat, 74, 0.5], // D5
+      [1 * beat, 76, 1.0],   // E5
+      [2 * beat, 74, 0.5],   // D5
+      [2.5 * beat, 72, 0.5], // C5
+      [3 * beat, 79, 1.0],   // G5
+      [4 * beat, 77, 0.5],   // F5
+      [4.5 * beat, 76, 0.5], // E5
+      [5 * beat, 74, 1.0],   // D5
+      [6 * beat, 72, 0.5],   // C5
+      [6.5 * beat, 71, 0.5], // B4
+      [7 * beat, 72, 1.5],   // C5 (hold into next loop)
+    ]
+
+    const midiToFreq = (n: number) => 440 * Math.pow(2, (n - 69) / 12)
+
+    for (const [off, nn, dBeats] of melody) {
+      const f = midiToFreq(nn)
+      const noteDur = dBeats * beat
+      const att = 0.008
+      const rel = noteDur - 0.02
+      noteOn(L, f, off, 0.10, att, rel, 'sine')
+      // slightly detuned + panned copy for shimmer
+      noteOn(R, f * 1.002, off, 0.07, att, rel, 'sine')
+    }
+
+    // Bass: simple root notes on beats 1 & 3 (soft saw, very subdued)
+    const bassNotes: [number, number][] = [
+      [0 * bar, 48], // C3
+      [1 * bar, 55], // G3
+      [2 * bar, 48], // C3
+      [3 * bar, 53], // F3
+    ]
+    for (const [off, nn] of bassNotes) {
+      const f = midiToFreq(nn)
+      const noteDur = bar * 0.95 // staccato feel with tiny gap before loop point
+      noteOn(L, f, off, 0.07, 0.02, noteDur - 0.03, 'softsaw')
+      noteOn(R, f, off, 0.05, 0.02, noteDur - 0.03, 'softsaw')
+    }
+
+    // Pad: sustained C major chord (soft saw, very quiet, slow tremolo for warmth)
+    const padFreqs = [midiToFreq(48), midiToFreq(52), midiToFreq(55)] // C E G
+    for (const f of padFreqs) {
+      noteOn(L, f, 0, 0.04, 0.15, dur - 0.2, 'softsaw')
+      noteOn(R, f * 0.997, 0, 0.03, 0.15, dur - 0.2, 'softsaw')
+    }
+
+    // Apply gentle master fade-out over last 200ms to ensure seamless loop (no click)
+    const fadeSamples = Math.floor(0.2 * sr)
+    for (let i = len - fadeSamples; i < len; i++) {
+      const fade = (i - (len - fadeSamples)) / fadeSamples
+      const smooth = fade * fade * (3 - 2 * fade) // smoothstep
+      L[i] *= 1 - smooth
+      R[i] *= 1 - smooth
+    }
+
+    // Normalize gently so nothing clips
+    let peak = 0
+    for (let i = 0; i < len; i++) {
+      peak = Math.max(peak, Math.abs(L[i]), Math.abs(R[i]))
+    }
+    if (peak > 0.85) {
+      const scale = 0.8 / peak
+      for (let i = 0; i < len; i++) {
+        L[i] *= scale
+        R[i] *= scale
+      }
+    }
+
+    this.musicBuf = buf
+    return buf
   }
 }

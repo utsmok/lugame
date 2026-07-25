@@ -14,7 +14,7 @@ const EVENT_SFX: Record<GameEvent, SfxName> = {
   flee: 'flee',
   win: 'win',
   bump: 'bump',
-  collect: 'click',
+  collect: 'collect',
   // "finish" reuses the soft click cue (program ended without winning)
   finish: 'click',
   click: 'click',
@@ -26,6 +26,7 @@ class App {
   private renderer: Renderer;
   private ui: PaletteUI;
   private levelIndex = 0;
+  private easy = false;
   private last = performance.now();
 
   constructor() {
@@ -41,6 +42,10 @@ class App {
       onPrevLevel: () => this.changeLevel(this.levelIndex - 1),
       onNextLevel: () => this.changeLevel(this.levelIndex + 1),
       onPlayAgain: () => this.changeLevel(this.levelIndex),
+      onToggleEasy: (b) => { this.easy = b; this.engine.easyMode = b; },
+      onToggleMute: (b) => this.audio.setMuted(b),
+      onRemoveChip: (i) => this.engine.removeAt(i),
+      onSelectLevel: (i) => this.changeLevel(i),
     });
     this.renderer = new Renderer(this.ui.canvas);
 
@@ -61,6 +66,7 @@ class App {
     this.levelIndex = index;
     this.engine = new GameEngine(LEVELS[index]);
     this.engine.onEvent = (e) => this.audio.play(EVENT_SFX[e]);
+    this.engine.easyMode = this.easy;
     this.ui.setLevelInfo(index, LEVELS.length, this.engine.level.name);
   }
 
@@ -106,6 +112,7 @@ class App {
     const unlock = () => {
       this.audio.resume();
       void this.audio.loadOverrides();
+      this.audio.startMusic();
       window.removeEventListener('pointerdown', unlock);
       window.removeEventListener('keydown', unlock);
     };
