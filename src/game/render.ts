@@ -365,6 +365,12 @@ const FAN_COLORS = ['#1bbf9e', '#2e6bff', '#ffd34e', '#1bbf9e', '#b06bff'];
 // CONFETTI + FAN_COLORS are the default palettes; a theme may override them
 // (theme.confetti / theme.fanColors) via the Renderer constructor.
 
+// Peacock directional sprite maps (GLOBAL player visual — not themed).
+// facing index (from round(dir/90)): 0=Up, 1=Right, 2=Down, 3=Left.
+// peacock-walk.png: 4 cols (R,D,U,L) × 3 walk-cycle rows, 32×32 — fanned tail.
+const WALK_COL = [2, 0, 1, 3]; // facing → column on the fanned walk sheet
+const WALK_FRAMES = 3;
+
 // ─── Renderer ───────────────────────────────────────────────────────
 
 export class Renderer {
@@ -375,6 +381,7 @@ export class Renderer {
   private prevTime = 0;
   private prevCollected: boolean[] = []; // tracks last-frame collected state
   private sparkles: Map<number, Sparkle> = new Map(); // goal-index → active sparkle
+  private peacockWalk: HTMLImageElement | null = null;
 
   private goalEmoji: string;
   private fanColors: readonly string[];
@@ -393,6 +400,14 @@ export class Renderer {
     this.fanColors = theme.fanColors ?? FAN_COLORS;
     this.confettiColors = theme.confetti ?? CONFETTI;
     this.emojiFor = makeEmojiResolver(theme);
+  }
+
+  /** Best-effort load of the (global) peacock directional walk sprite.
+   *  (peacock-folded.png is reserved for a future low-energy state; unused now.) */
+  loadPlayer() {
+    const walk = new Image();
+    walk.src = assetUrl('assets/img/peacock-walk.png');
+    walk.onload = () => { this.peacockWalk = walk; };
   }
 
   /** Best-effort load of real decor sprites; swaps them into the tileset when ready. */
@@ -562,6 +577,12 @@ export class Renderer {
     }
 
     // 6. Confetti on win
+    if (e.phase === 'won' && this.prevPhase !== 'won') this.spawnConfetti(W, H);
+    this.prevPhase = e.phase;
+    if (this.confetti.length) {
+      this.stepConfetti(dt, H);
+      this.drawConfetti(ctx);
+    }
   }
 
   // ─── Goals / Cookies ──────────────────────────────────────────
@@ -843,7 +864,7 @@ export class Renderer {
     if (rot !== 0) ctx.rotate(rot);
     if (scaleX !== 1 || scaleY !== 1) ctx.scale(scaleX, scaleY);
 
-    this.emoji(ctx, '🦚', 0, 0, cell * 0.66);
+    this.drawPlayerSprite(ctx, e, cell, now);
 
     // Facing chevron (relative to transformed origin)
     const dirRad = (r.ddir * Math.PI) / 180;
@@ -879,6 +900,33 @@ export class Renderer {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(ch, x, y);
+  }
+
+  /**
+   * Draw the peacock from the directional walk sprite (4 cols: R,D,U,L × 3
+   * walk-cycle rows, 32×32). Falls back to the 🦚 emoji until the sheet loads
+   * (or if it 404s). Idle phases use a static frame; running cycles the walk
+   * animation. facing flips at the midpoint of a turn, matching the chevron.
+   */
+  private drawPlayerSprite(
+    ctx: CanvasRenderingContext2D,
+    e: GameEngine,
+    cell: number,
+    now: number,
+  ) {
+    const sheet = this.peacockWalk;
+    if (!sheet) {
+      this.emoji(ctx, '🦚', 0, 0, cell * 0.66);
+      return;
+    }
+    const facing = ((Math.round(e.robot.ddir / 90) % 4) + 4) % 4;
+    const col = WALK_COL[facing];
+    const row = e.phase === 'running' ? Math.floor(now * 8) % WALK_FRAMES : 0;
+    const smooth = ctx.imageSmoothingEnabled;
+    ctx.imageSmoothingEnabled = false; // crisp pixel sprite
+    const s = cell * 0.72;
+    ctx.drawImage(sheet, col * 32, row * 32, 32, 32, -s / 2, -s / 2, s, s);
+    ctx.imageSmoothingEnabled = smooth;
   }
 
   private roundRect(
@@ -945,13 +993,16 @@ export class Renderer {
     }
   }
 
-  private stepConfetti(dt: number) {
+  private stepConfetti(dt: number, H: number) {
     for (const p of this.confetti) {
       p.vy += 240 * dt;
       p.x += p.vx * dt;
       p.y += p.vy * dt;
       p.rot += p.vr * dt;
     }
+    // Cull particles once they've fallen past the canvas so the array drains
+    // and step/draw stop after the burst is done.
+    this.confetti = this.confetti.filter((p) => p.y < H + 40);
   }
 
   private drawConfetti(ctx: CanvasRenderingContext2D) {

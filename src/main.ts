@@ -110,6 +110,7 @@ class App {
     this.renderer = new Renderer(this.ui.canvas, this.theme);
     this.renderer.loadDecor();
     this.renderer.loadGround();
+    this.renderer.loadPlayer();
 
     this.applySettings();
 
