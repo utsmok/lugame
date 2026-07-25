@@ -56,6 +56,10 @@ export const nl = {
   hint: 'Hint',
   par: 'Par',
   replayTutorial: 'Toon uitleg',
+  speed: 'Snelheid',
+  speedSlow: '🐢 Langzaam',
+  speedNormal: '▶ Normaal',
+  speedFast: '⚡ Snel',
   language: 'Taal',
 
   // themes (settings row + theme names + goal/animal labels per docs/theming-design.md)

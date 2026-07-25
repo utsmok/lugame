@@ -12,7 +12,7 @@ import {
   loadTheme,
   setStoredTheme,
 } from './game/theme';
-import { PaletteUI, type SettingsState } from './ui/palette';
+import { PaletteUI, type SettingsState, type Speed } from './ui/palette';
 import { LevelEditor } from './ui/editor';
 import {
   deleteCustomLevel,
@@ -42,6 +42,7 @@ const EVENT_SFX: Record<GameEvent, SfxName> = {
 
 const SETTINGS_KEY = 'lugame.settings';
 const INTRO_LEVELS: readonly number[] = [1, 2, 3];
+const SPEED_FACTOR: Record<Speed, number> = { slow: 1.6, normal: 1, fast: 0.55 };
 
 function loadSettings(): SettingsState {
   try {
@@ -56,13 +57,14 @@ function loadSettings(): SettingsState {
           music: o.music !== false,
           sound: o.sound !== false,
           freePlay: !!o.freePlay,
+          speed: o.speed === 'slow' || o.speed === 'fast' ? o.speed : 'normal',
         };
       }
     }
   } catch {
     /* ignore corrupt settings */
   }
-  return { easy: false, holdOnError: false, music: true, sound: true, freePlay: false };
+  return { easy: false, holdOnError: false, music: true, sound: true, freePlay: false, speed: 'normal' };
 }
 
 class App {
@@ -125,6 +127,7 @@ class App {
       onHint: () => this.onHint(),
       onOnboarded: () => this.onOnboarded(),
       onReplayTutorial: () => this.onReplayTutorial(),
+      onCycleSpeed: () => this.cycleSpeed(),
     });
     this.renderer = new Renderer(this.ui.canvas, this.theme);
     this.renderer.loadDecor();
@@ -170,6 +173,7 @@ class App {
   private applySettings() {
     this.engine.easyMode = this.settings.easy;
     this.engine.holdOnError = this.settings.holdOnError;
+    this.engine.speedFactor = SPEED_FACTOR[this.settings.speed];
     this.audio.setMuted(!this.settings.sound);
     this.audio.setMusicEnabled(this.settings.music);
     this.wireAudio();
@@ -194,16 +198,24 @@ class App {
     this.ui.setProgress(unlocked, this.cleared.size, n);
   }
 
+  /** Cycle the run-speed setting (slow → normal → fast → slow). */
+  private cycleSpeed() {
+    const order: Speed[] = ['slow', 'normal', 'fast'];
+    const i = order.indexOf(this.settings.speed);
+    this.setSetting('speed', order[(i + 1) % order.length]!);
+  }
+
   private setSetting<K extends keyof SettingsState>(
     key: K,
     value: SettingsState[K],
   ) {
     this.settings[key] = value;
-    if (key === 'easy') this.engine.easyMode = value;
-    else if (key === 'holdOnError') this.engine.holdOnError = value;
-    else if (key === 'music') this.audio.setMusicEnabled(value);
-    else if (key === 'sound') this.audio.setMuted(!value);
+    if (key === 'easy') this.engine.easyMode = this.settings.easy;
+    else if (key === 'holdOnError') this.engine.holdOnError = this.settings.holdOnError;
+    else if (key === 'music') this.audio.setMusicEnabled(this.settings.music);
+    else if (key === 'sound') this.audio.setMuted(!this.settings.sound);
     else if (key === 'freePlay') this.applyProgress();
+    else if (key === 'speed') this.engine.speedFactor = SPEED_FACTOR[this.settings.speed];
     try {
       localStorage.setItem(SETTINGS_KEY, JSON.stringify(this.settings));
     } catch {

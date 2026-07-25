@@ -33,7 +33,10 @@ export interface PaletteCallbacks {
   onHint?: () => void;
   onOnboarded?: () => void;
   onReplayTutorial?: () => void;
+  onCycleSpeed?: () => void;
 }
+
+export type Speed = 'slow' | 'normal' | 'fast';
 
 export interface SettingsState {
   easy: boolean;
@@ -41,6 +44,7 @@ export interface SettingsState {
   music: boolean;
   sound: boolean;
   freePlay: boolean;
+  speed: Speed;
 }
 
 interface Built {
@@ -162,6 +166,8 @@ export class PaletteUI {
   private hintBtn!: HTMLButtonElement;
   private fingerEl?: HTMLElement;
   private onboardGen = 0;
+  private speedState: Speed = 'normal';
+  private speedValEl?: HTMLElement;
   private cachedProgram = '';
   private levelIndex = 0;
   private levelTotal = 1;
@@ -377,6 +383,7 @@ export class PaletteUI {
       this.buildToggle('sound', T.sound, ''),
       this.buildToggle('freeplay', T.freePlay, T.freePlayHint),
     );
+    sBody.appendChild(this.buildSpeedRow());
     sBody.appendChild(this.buildLanguageRow());
     sBody.appendChild(this.buildThemeRow());
     const replay = document.createElement('button');
@@ -461,6 +468,26 @@ export class PaletteUI {
   /** Language picker row — mirrors the toggle pattern. Switching locale reloads
    * the page: the simplest correct re-render (a live in-place relocalize()
    * pass is a P2 enhancement, out of scope here). */
+  private buildSpeedRow(): HTMLElement {
+    const row = document.createElement('button');
+    row.type = 'button';
+    row.className = 'toggle-row speed-row';
+    const lab = h('span', 'tog-label');
+    lab.textContent = T.speed;
+    const val = h('span', 'tog-speed');
+    row.append(lab, val);
+    row.addEventListener('click', () => this.cb.onCycleSpeed?.());
+    this.speedValEl = val;
+    this.renderSpeed();
+    return row;
+  }
+
+  private renderSpeed() {
+    if (!this.speedValEl) return;
+    const s = this.speedState;
+    this.speedValEl.textContent = s === 'slow' ? T.speedSlow : s === 'fast' ? T.speedFast : T.speedNormal;
+  }
+
   private buildLanguageRow(): HTMLElement {
     const row = h('div', 'lang-row');
     const lab = h('span', 'tog-label');
@@ -625,6 +652,8 @@ export class PaletteUI {
       row.classList.toggle('on', map[k]);
       sw?.classList.toggle('on', map[k]);
     });
+    this.speedState = s.speed;
+    this.renderSpeed();
   }
 
   private programWrap!: HTMLElement;

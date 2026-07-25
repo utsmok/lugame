@@ -297,6 +297,21 @@ canvas#board {
 .cmd.right, .chip.right { background: var(--right); }
 .cmd.fan, .chip.fan { background: var(--fan); }
 .cmd.repeat2, .cmd.repeat3, .chip.repeat2, .chip.repeat3 { background: var(--accent); color: #111; }
+/* B6: distinct geometric shape per command — a redundant non-colour cue
+   (colour-blind safety; ↺/↻ are near-mirrors, so ◀/▶ disambiguate turns). */
+.cmd { position: relative; }
+.cmd.forward::before, .chip.forward::before { content: '▲'; }
+.cmd.left::before,    .chip.left::before    { content: '◀'; }
+.cmd.right::before,   .chip.right::before   { content: '▶'; }
+.cmd.fan::before,     .chip.fan::before     { content: '◆'; }
+.cmd::before {
+  position: absolute; right: 0.25rem; bottom: 0.15rem;
+  font-size: 2.2rem; line-height: 1; opacity: 0.16; pointer-events: none;
+}
+.chip::before {
+  position: absolute; right: 0.05rem; bottom: 0;
+  font-size: 1.7rem; line-height: 1; opacity: 0.22; pointer-events: none;
+}
 
 /* ── Controls row ───────────────────────────────────────── */
 .controls {
@@ -542,6 +557,7 @@ canvas#board {
 }
 .toggle-row .switch { margin-left: auto; }
 .toggle-row:active { transform: scale(0.99); }
+.speed-row .tog-speed { margin-left: auto; font-weight: 700; opacity: 0.85; }
 
 /* switch knob */
 .switch {

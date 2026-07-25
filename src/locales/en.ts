@@ -58,6 +58,10 @@ export const en: Translation = {
   hint: 'Hint',
   par: 'Par',
   replayTutorial: 'Show tutorial',
+  speed: 'Speed',
+  speedSlow: '🐢 Slow',
+  speedNormal: '▶ Normal',
+  speedFast: '⚡ Fast',
   language: 'Language',
 
   // themes (settings row + theme names + goal/animal labels per docs/theming-design.md)

@@ -83,6 +83,8 @@ export class GameEngine {
   /** Single-step debug: when true, update() does NOT auto-advance — each
    *  command runs only on stepOnce(). Reset on every exit from 'running'. */
   stepMode = false;
+  /** Run-speed multiplier applied to every step duration (1 = normal). */
+  speedFactor = 1;
 
   // Expanded execution sequence (repeat tiles resolved to plain commands) and
   // the program-tile index each step came from (for the active-chip highlight).
@@ -269,7 +271,7 @@ export class GameEngine {
       return;
     }
     const cmd = this.execSeq[this.pc]!;
-    this.stepDur = STEP_DUR[cmd];
+    this.stepDur = STEP_DUR[cmd] * this.speedFactor;
     this.pc++;
 
     switch (cmd) {
