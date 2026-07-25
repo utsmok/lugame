@@ -66,7 +66,7 @@ export class PaletteUI {
 
     const topbar = h('div', 'topbar');
     const title = h('span', 'title');
-    title.textContent = '\uD83E\uDD98 lugame';
+    title.textContent = '🦚 lugame';
     const spacer = h('span', 'spacer');
 
     // Level-select grid button
@@ -113,7 +113,7 @@ export class PaletteUI {
     this.overlay = h('div', 'overlay');
     const card = h('div', 'card');
     const emojiEl = h('div', 'emoji');
-    emojiEl.textContent = '\uD83E\uDD98\uD83C\uDF89\uD83C\uDF6A';
+    emojiEl.textContent = '🦚🎉🍪';
     const msg = h('div', 'msg');
     msg.textContent = 'Cookie time!';
     this.overlayBtn = document.createElement('button');

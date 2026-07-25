@@ -48,6 +48,7 @@ class App {
       onSelectLevel: (i) => this.changeLevel(i),
     });
     this.renderer = new Renderer(this.ui.canvas);
+    this.renderer.loadDecor();
 
     this.engine.onEvent = (e) => this.audio.play(EVENT_SFX[e]);
 

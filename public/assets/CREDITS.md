@@ -21,7 +21,21 @@ engine auto-loads it on first interaction.
 
 ## Graphics
 
-All visuals render at runtime as emoji on an HTML5 Canvas (🦚 peacock, 🍪 cookie,
-🐮🐷🐑🐔 farm animals) — `src/game/render.ts`. No image assets are bundled, which
-keeps the download tiny (~7 KB JS gzipped) and the look consistent across
-platforms.
+Characters and goals render at runtime as emoji on an HTML5 Canvas (🦚 peacock,
+🍪 cookie, 🐮🐷🐑🐔 farm animals) — `src/game/render.ts`.
+
+The scenery (trees, bushes, flowers, grass tufts) uses real pixel-art decor
+sprites from a free CC0 tileset:
+
+| Files | What | Source | Author | License |
+| --- | --- | --- | --- | --- |
+| `img/tree.png`, `tree2.png`, `pine.png`, `bush.png`, `flowers.png`, `flowers2.png`, `grass.png` | top-down trees & bushes decor | [Trees & Bushes](https://opengameart.org/content/trees-bushes) — OpenGameArt | [ansimuz (Luis Zuno)](https://ansimuz.com) | **CC0** |
+
+> These were extracted from the source spritesheet
+> (`trees-and-bushes.png`) by flood-filling the olive-green background to
+> transparency and splitting into individual sprites. CC0 — no attribution
+> required, but credited here with thanks. The dirt path tiles and grass
+> background are still drawn procedurally.
+
+A `Tileset` interface (`render.ts`) makes the look swappable — additional
+tilesets can be added later by implementing it.

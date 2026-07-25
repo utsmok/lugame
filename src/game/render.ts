@@ -3,6 +3,11 @@ import { EMOJI, key } from './types';
 
 // ─── Tileset interface ──────────────────────────────────────────────
 
+export interface DecorImg {
+  img: HTMLImageElement;
+  h: number; // display height as a fraction of a cell
+}
+
 export interface Tileset {
   /** Fill the entire board background (grass / sky / theme base). */
   drawBackground(ctx: CanvasRenderingContext2D, W: number, H: number): void;
@@ -23,6 +28,8 @@ export interface Tileset {
     size: number,
     seed: number,
   ): void;
+  /** Optional real decor sprites; when present, drawDecor uses them. */
+  decorImages?: DecorImg[];
 }
 
 // ─── Seeded pseudo-random (deterministic per cell) ─────────────────
@@ -49,6 +56,7 @@ function cellSeed(c: number, r: number): number {
 // ─── FarmTileset ────────────────────────────────────────────────────
 
 class FarmTileset implements Tileset {
+  decorImages?: DecorImg[];
   drawBackground(ctx: CanvasRenderingContext2D, W: number, H: number) {
     // Base grass gradient — warm, inviting greens
     const bg = ctx.createLinearGradient(0, 0, 0, H);
@@ -95,21 +103,36 @@ class FarmTileset implements Tileset {
     seed: number,
   ) {
     const rng = mulberry32(seed);
-    const roll = rng(); // 0..1 picks decor type
+    const roll = rng();
+
+    if (this.decorImages && this.decorImages.length) {
+      if (roll < 0.62) {
+        const pick =
+          this.decorImages[Math.floor(rng() * this.decorImages.length)];
+        if (pick && pick.img.complete && pick.img.naturalWidth > 0) {
+          const ih = size * pick.h;
+          const iw = (ih * pick.img.naturalWidth) / pick.img.naturalHeight;
+          const dx = x + (size - iw) / 2;
+          const dy = y + size - ih; // bottom-anchored: stands on the cell
+          const smooth = ctx.imageSmoothingEnabled;
+          ctx.imageSmoothingEnabled = false; // crisp pixel art
+          ctx.drawImage(pick.img, dx, dy, iw, ih);
+          ctx.imageSmoothingEnabled = smooth;
+        }
+      }
+      return;
+    }
+
+    // procedural fallback (no image decor loaded yet)
     const cx = x + size / 2;
     const cy = y + size / 2;
-
     if (roll < 0.28) {
-      // Small bush — two overlapping circles in different greens
       this.drawBush(ctx, cx, cy, size * 0.28, rng);
     } else if (roll < 0.52) {
-      // Flower(s)
       this.drawFlower(ctx, cx, cy, size * 0.12, rng);
     } else if (roll < 0.66) {
-      // Tiny tree
       this.drawTree(ctx, cx, cy + size * 0.08, size * 0.22, rng);
     }
-    // else: empty grass (keep it sparse)
   }
 
   private drawPathCell(
@@ -293,6 +316,18 @@ const CONFETTI = [
 const FAN_DOTS = 14;
 const FAN_COLORS = ['#1bbf9e', '#2e6bff', '#ffd34e', '#1bbf9e', '#b06bff'];
 
+const DECOR_BASE = import.meta.env.BASE_URL;
+// Real CC0 decor sprites (ansimuz "Trees & Bushes"). h = display height / cell.
+const DECOR_SPEC: { file: string; h: number }[] = [
+  { file: 'tree.png', h: 1.0 },
+  { file: 'tree2.png', h: 1.05 },
+  { file: 'pine.png', h: 0.78 },
+  { file: 'bush.png', h: 0.62 },
+  { file: 'flowers.png', h: 0.34 },
+  { file: 'flowers2.png', h: 0.3 },
+  { file: 'grass.png', h: 0.3 },
+];
+
 // ─── Renderer ───────────────────────────────────────────────────────
 
 export class Renderer {
@@ -310,6 +345,25 @@ export class Renderer {
     if (!ctx) throw new Error('2D canvas context unavailable');
     this.ctx = ctx;
     this.tileset = tileset ?? new FarmTileset();
+  }
+
+  /** Best-effort load of real decor sprites; swaps them into the tileset when ready. */
+  loadDecor() {
+    const loaded: DecorImg[] = [];
+    let settled = 0;
+    for (const spec of DECOR_SPEC) {
+      const img = new Image();
+      img.src = `${DECOR_BASE}assets/img/${spec.file}`;
+      img.onload = () => {
+        loaded.push({ img, h: spec.h });
+        if (++settled === DECOR_SPEC.length) this.tileset.decorImages = loaded;
+      };
+      img.onerror = () => {
+        if (++settled === DECOR_SPEC.length && loaded.length) {
+          this.tileset.decorImages = loaded;
+        }
+      };
+    }
   }
 
   draw(e: GameEngine, now: number) {
