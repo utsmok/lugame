@@ -1,5 +1,7 @@
 // Core types + grid geometry for lugame.
 
+export const MAX_ENERGY = 3;
+
 export type Dir = 0 | 90 | 180 | 270; // 0=N(up), 90=E(right), 180=S(down), 270=W(left)
 
 export type Command = 'forward' | 'left' | 'right' | 'fan';
@@ -34,9 +36,10 @@ export interface Level {
   startDir: Dir;
   goals: Pos[];
   animals: AnimalSpawn[];
+  energy?: number;
 }
 
-export type Phase = 'editing' | 'running' | 'bumped' | 'won';
+export type Phase = 'editing' | 'running' | 'bumped' | 'error' | 'won';
 
 export type GameEvent =
   | 'step'
@@ -109,8 +112,8 @@ export const COMMAND_EMOJI: Record<Command, string> = {
 };
 
 export const COMMAND_LABEL: Record<Command, string> = {
-  forward: 'Go',
-  left: 'Left',
-  right: 'Right',
-  fan: 'Shoo!',
+  forward: 'Stap',
+  left: 'Links',
+  right: 'Rechts',
+  fan: 'Ksst!',
 };

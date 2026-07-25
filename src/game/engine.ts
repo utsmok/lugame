@@ -3,6 +3,7 @@ import {
   type Command,
   type Dir,
   type GameEvent,
+  MAX_ENERGY,
   type Level,
   type Phase,
   type Pos,
@@ -49,9 +50,17 @@ export class GameEngine {
   bumpShake = 0; // visual nudge 0..1, decays (used in both bump modes)
   easyMode = false; // when true, a blocked step shakes + plays the error sound but keeps going
   collected: boolean[] = [];
+  energy = 0;
+  readonly maxEnergy = MAX_ENERGY;
+  holdOnError = false;
+  errorStep = -1;
   private stepElapsed = 0;
   private stepDur = STEP_DUR.forward;
   private animalSeq = 0;
+
+  get energyEnabled(): boolean { return this.level.energy !== undefined; }
+
+  private editable(): boolean { return this.phase === 'editing' || this.phase === 'error'; }
 
   onEvent: (e: GameEvent) => void = () => {};
 
@@ -73,27 +82,28 @@ export class GameEngine {
       fleeT: 0,
     }));
     this.collected = level.goals.map(() => false);
+    this.energy = level.energy ?? 0;
   }
 
-  // --- program editing (only while editing) ---
+  // --- program editing (only while editing or error) ---
   enqueue(cmd: Command) {
-    if (this.phase !== 'editing') return;
+    if (!this.editable()) return;
     this.program.push(cmd);
     this.emit('click');
   }
   undo() {
-    if (this.phase !== 'editing') return;
+    if (!this.editable()) return;
     this.program.pop();
     this.emit('click');
   }
   removeAt(index: number) {
-    if (this.phase !== 'editing') return;
+    if (!this.editable()) return;
     if (index < 0 || index >= this.program.length) return;
     this.program.splice(index, 1);
     this.emit('click');
   }
   clear() {
-    if (this.phase !== 'editing') return;
+    if (!this.editable()) return;
     if (this.program.length === 0) return;
     this.program = [];
     this.resetBoard();
@@ -101,7 +111,7 @@ export class GameEngine {
   }
 
   run() {
-    if (this.phase !== 'editing') return;
+    if (!this.editable()) return;
     if (this.program.length === 0) {
       this.emit('click');
       return;
@@ -125,6 +135,8 @@ export class GameEngine {
     this.bumpShake = 0;
     this.winT = 0;
     this.collected = this.level.goals.map(() => false);
+    this.energy = this.level.energy ?? 0;
+    this.errorStep = -1;
   }
 
   // --- main update; dt in seconds ---
@@ -142,6 +154,8 @@ export class GameEngine {
         this.pc = 0;
         this.phase = 'editing';
       }
+    } else if (this.phase === 'error') {
+      /* frozen on the error tile; wait for user reset */
     } else if (this.phase === 'won') {
       this.winT += dt;
     }
@@ -203,6 +217,7 @@ export class GameEngine {
         for (let i = 0; i < this.level.goals.length; i++) {
           if (!this.collected[i] && samePos(this.level.goals[i], next)) {
             this.collected[i] = true;
+            if (this.energyEnabled && this.energy < this.maxEnergy) this.energy++;
             this.emit('collect');
             break;
           }
@@ -244,10 +259,9 @@ export class GameEngine {
     this.bumpDir = dir;
     this.bumpShake = 1;
     this.emit('bump');
-    if (!this.easyMode) {
-      this.phase = 'bumped';
-      this.bumpT = 0;
-    }
+    if (this.easyMode) return;
+    if (this.holdOnError) { this.phase = 'error'; this.errorStep = this.pc - 1; }
+    else { this.phase = 'bumped'; this.bumpT = 0; }
   }
 
   private emit(e: GameEvent) {

@@ -164,12 +164,7 @@ export class AudioBus {
       case 'click':
         this.blip(t, 660, 0.04, 'sine', 0.16);
         break;
-      case 'collect':
-        // quick rising 3-note cookie-pickup chime (~150ms total)
-        this.blip(t, 523.25, 0.09, 'triangle', 0.28)
-        this.blip(t + 0.05, 659.25, 0.09, 'triangle', 0.30)
-        this.blip(t + 0.10, 783.99, 0.14, 'sine', 0.32)
-        break;
+      case 'collect': this.chomp(t); this.chomp(t + 0.14); break;
     }
   }
 
@@ -268,6 +263,28 @@ export class AudioBus {
     src.stop(t + dur);
     trem.start(t);
     trem.stop(t + dur);
+  }
+
+  private chomp(t: number) {
+    const ctx = this.ctx!;
+    // bandpass-filtered noise burst sweeping 1500→600Hz over ~0.09s (Q≈0.8)
+    const src = ctx.createBufferSource();
+    src.buffer = this.getNoise(0.09);
+    const f = ctx.createBiquadFilter();
+    f.type = 'bandpass';
+    f.frequency.setValueAtTime(1500, t);
+    f.frequency.exponentialRampToValueAtTime(Math.max(1, 600), t + 0.09);
+    f.Q.value = 0.8;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.28, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
+    src.connect(f);
+    f.connect(g);
+    g.connect(this.master!);
+    src.start(t);
+    src.stop(t + 0.09 + 0.03);
+    // low sine thud ~90Hz for jaw closure
+    this.blip(t, 90, 0.08, 'sine', 0.18);
   }
 
   // The signature: a peacock's two-tone wailing call "ah-AAAAH".

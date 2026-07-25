@@ -464,13 +464,53 @@ export class Renderer {
     // 5. Robot (peacock)
     this.drawRobot(ctx, e, cx, cy, cell, now);
 
-    // 6. Confetti on win
-    if (e.phase === 'won') {
-      if (this.prevPhase !== 'won') this.spawnConfetti(W, H);
-      this.stepConfetti(dt);
-      this.drawConfetti(ctx);
+    // 5b. Energy pips HUD
+    if (e.energyEnabled) {
+      const radius = Math.max(6, cell * 0.12);
+      const spacing = radius * 2.4;
+      const totalW = (e.maxEnergy - 1) * spacing + radius * 2;
+      const px = ox + cell * 0.16;
+      const py = oy + cell * 0.16;
+      ctx.save();
+      // backdrop pill
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      this.roundRect(ctx, px - totalW * 0.15, py - radius * 1.3, totalW * 1.3, radius * 2.6, radius * 0.8);
+      ctx.fill();
+      // pips
+      for (let i = 0; i < e.maxEnergy; i++) {
+        const cx2 = px + i * spacing;
+        if (i < e.energy) {
+          ctx.fillStyle = '#36c96a';
+          ctx.beginPath();
+          ctx.arc(cx2, py, radius, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(cx2, py, radius, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      }
+      ctx.restore();
     }
-    this.prevPhase = e.phase;
+
+    // 5c. Error highlight
+    if (e.phase === 'error') {
+      const pos = e.robot.pos;
+      const ex = ox + pos.c * cell;
+      const ey = oy + pos.r * cell;
+      const alpha = 0.45 + 0.35 * Math.sin(now * 6);
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.strokeStyle = '#ff5d6c';
+      ctx.lineWidth = Math.max(2, cell * 0.04);
+      this.roundRect(ctx, ex + 2, ey + 2, cell - 4, cell - 4, cell * 0.1);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // 6. Confetti on win
   }
 
   // ─── Goals / Cookies ──────────────────────────────────────────

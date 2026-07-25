@@ -11,7 +11,7 @@ export const LEVELS: Level[] = [
   // 1 — teach Forward. Solution: F F F
   {
     id: 1,
-    name: 'First Steps',
+    name: 'Eerste Stapjes',
     cols: 4,
     rows: 1,
     path: [
@@ -26,7 +26,7 @@ export const LEVELS: Level[] = [
   // 2 — teach Turn. Solution: F F R F F F
   {
     id: 2,
-    name: 'Around the Corner',
+    name: 'Om de Hoek',
     cols: 4,
     rows: 4,
     path: [
@@ -42,7 +42,7 @@ export const LEVELS: Level[] = [
   // 3 — teach Fan. Solution: F F SHOO F F
   {
     id: 3,
-    name: 'Shoo, Cow!',
+    name: 'Koe, Wegwezen!',
     cols: 5,
     rows: 1,
     path: [
@@ -57,7 +57,7 @@ export const LEVELS: Level[] = [
   // 4 — two animals, re-orient between fans. Solution: F SHOO F F R SHOO F F
   {
     id: 4,
-    name: 'Two Friends',
+    name: 'Twee Vriendjes',
     cols: 4,
     rows: 3,
     path: [
@@ -76,7 +76,7 @@ export const LEVELS: Level[] = [
   // 5 — winding path, two animals. Solution: F L F SHOO F L F R F F R SHOO F F
   {
     id: 5,
-    name: 'The Long Way',
+    name: 'De Lange Weg',
     cols: 5,
     rows: 3,
     path: [
@@ -96,7 +96,7 @@ export const LEVELS: Level[] = [
   // 6 — teach multiple cookies. Solution: F F F F F (collects both)
   {
     id: 6,
-    name: 'Two Cookies',
+    name: 'Twee Koekjes',
     cols: 6,
     rows: 1,
     path: [
@@ -107,13 +107,14 @@ export const LEVELS: Level[] = [
     startDir: 90,
     goals: [{ c: 2, r: 0 }, { c: 5, r: 0 }],
     animals: [],
+    energy: 1,
   },
 
   // 7 — branching T-junction, backtracking to grab both cookies.
   //   Solution: F L F F R R F F F F
   {
     id: 7,
-    name: 'The Crossroad',
+    name: 'Het Kruispunt',
     cols: 5,
     rows: 2,
     path: [
@@ -130,7 +131,7 @@ export const LEVELS: Level[] = [
   //   Solution: F F F F SHOO F F
   {
     id: 8,
-    name: 'Snack Break',
+    name: 'Tussendoortje',
     cols: 7,
     rows: 1,
     path: [
@@ -147,7 +148,7 @@ export const LEVELS: Level[] = [
   //   Solution: F F L SHOO F F R R SHOO F F F F
   {
     id: 9,
-    name: 'Cookie Garden',
+    name: 'Koekjestuin',
     cols: 5,
     rows: 5,
     path: [
@@ -163,5 +164,6 @@ export const LEVELS: Level[] = [
       { pos: { c: 1, r: 2 }, kind: 'cow' },
       { pos: { c: 3, r: 2 }, kind: 'pig' },
     ],
+    energy: 2,
   },
 ];

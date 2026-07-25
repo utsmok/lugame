@@ -3,7 +3,9 @@ import {
   COMMAND_EMOJI,
   COMMAND_LABEL,
   type Command,
+  type Level,
 } from '../game/types';
+import { T } from '../i18n';
 
 export interface PaletteCallbacks {
   onAdd: (cmd: Command) => void;
@@ -13,16 +15,30 @@ export interface PaletteCallbacks {
   onPrevLevel: () => void;
   onNextLevel: () => void;
   onPlayAgain: () => void;
-  onToggleEasy?: (easy: boolean) => void;
-  onToggleMute?: (muted: boolean) => void;
   onRemoveChip?: (index: number) => void;
   onSelectLevel?: (index: number) => void;
+  onDeleteCustomLevel?: (id: number) => void;
+  onOpenEditor?: (seed?: Level) => void;
+  // settings
+  onToggleEasy?: (easy: boolean) => void;
+  onToggleHoldOnError?: (hold: boolean) => void;
+  onToggleMusic?: (on: boolean) => void;
+  onToggleSound?: (on: boolean) => void;
+}
+
+export interface SettingsState {
+  easy: boolean;
+  holdOnError: boolean;
+  music: boolean;
+  sound: boolean;
 }
 
 interface Built {
   el: HTMLElement;
   canvas: HTMLCanvasElement;
 }
+
+type ToggleKey = 'easy' | 'hold' | 'music' | 'sound';
 
 function h(tag: string, cls: string): HTMLElement {
   const el = document.createElement(tag);
@@ -46,13 +62,32 @@ export class PaletteUI {
   private cachedProgram = '';
   private levelIndex = 0;
   private levelTotal = 1;
-  // New feature state
-  private easyBtn!: HTMLButtonElement;
-  private muteBtn!: HTMLButtonElement;
+
+  // level picker state
+  private levelNames: string[] = [];
+  private customStart = 0; // combined-list index where custom levels begin
+  private customIds: number[] = [];
   private levelSelectBtn!: HTMLButtonElement;
   private levelSelectOverlay!: HTMLElement;
   private levelSelectGrid!: HTMLElement;
-  private muted = false;
+  private customListEl!: HTMLElement;
+
+  // settings
+  private settingsBtn!: HTMLButtonElement;
+  private editorBtn!: HTMLButtonElement;
+  private settingsOverlay!: HTMLElement;
+  private toggles: Record<ToggleKey, HTMLElement> = {
+    easy: undefined as unknown as HTMLElement,
+    hold: undefined as unknown as HTMLElement,
+    music: undefined as unknown as HTMLElement,
+    sound: undefined as unknown as HTMLElement,
+  };
+  private settings: SettingsState = {
+    easy: false,
+    holdOnError: false,
+    music: true,
+    sound: true,
+  };
 
   constructor(mount: HTMLElement, private cb: PaletteCallbacks) {
     const built = this.build();
@@ -66,42 +101,40 @@ export class PaletteUI {
 
     const topbar = h('div', 'topbar');
     const title = h('span', 'title');
-    title.textContent = '🦚 lugame';
+    title.textContent = T.brand;
     const spacer = h('span', 'spacer');
 
-    // Level-select grid button
     this.levelSelectBtn = document.createElement('button');
     this.levelSelectBtn.className = 'topbar-btn lvl-grid';
     this.levelSelectBtn.textContent = '\u2630';
-    this.levelSelectBtn.setAttribute('aria-label', 'Level select');
+    this.levelSelectBtn.setAttribute('aria-label', T.levelSelect);
 
-    // Easy mode toggle
-    this.easyBtn = document.createElement('button');
-    this.easyBtn.className = 'topbar-btn easy-toggle';
-    this.easyBtn.textContent = 'Easy';
-    this.easyBtn.setAttribute('aria-label', 'Toggle easy mode');
+    this.editorBtn = document.createElement('button');
+    this.editorBtn.className = 'topbar-btn editor-btn';
+    this.editorBtn.textContent = '\u270F\uFE0F';
+    this.editorBtn.setAttribute('aria-label', T.openEditor);
 
-    // Mute toggle
-    this.muteBtn = document.createElement('button');
-    this.muteBtn.className = 'topbar-btn mute-toggle';
-    this.muteBtn.textContent = '\uD83D\uDD0A';
-    this.muteBtn.setAttribute('aria-label', 'Toggle sound');
+    this.settingsBtn = document.createElement('button');
+    this.settingsBtn.className = 'topbar-btn settings-btn';
+    this.settingsBtn.textContent = '\u2699\uFE0F';
+    this.settingsBtn.setAttribute('aria-label', T.settings);
 
     this.prevBtn = document.createElement('button');
     this.prevBtn.className = 'lvl-btn prev';
     this.prevBtn.textContent = '\u2039';
-    this.prevBtn.setAttribute('aria-label', 'Previous level');
+    this.prevBtn.setAttribute('aria-label', T.prevLevel);
     this.lvlName = h('span', 'lvl-name');
     this.nextBtn = document.createElement('button');
     this.nextBtn.className = 'lvl-btn next';
     this.nextBtn.textContent = '\u203A';
-    this.nextBtn.setAttribute('aria-label', 'Next level');
+    this.nextBtn.setAttribute('aria-label', T.nextLevel);
+
     topbar.append(
       title,
       spacer,
       this.levelSelectBtn,
-      this.easyBtn,
-      this.muteBtn,
+      this.editorBtn,
+      this.settingsBtn,
       this.prevBtn,
       this.lvlName,
       this.nextBtn,
@@ -113,12 +146,12 @@ export class PaletteUI {
     this.overlay = h('div', 'overlay');
     const card = h('div', 'card');
     const emojiEl = h('div', 'emoji');
-    emojiEl.textContent = '🦚🎉🍪';
+    emojiEl.textContent = T.winEmoji;
     const msg = h('div', 'msg');
-    msg.textContent = 'Cookie time!';
+    msg.textContent = T.winMsg;
     this.overlayBtn = document.createElement('button');
     this.overlayBtn.className = 'again';
-    this.overlayBtn.textContent = 'Next \u25B6';
+    this.overlayBtn.textContent = T.next;
     card.append(emojiEl, msg, this.overlayBtn);
     this.overlay.appendChild(card);
     stage.append(canvas, this.overlay);
@@ -139,30 +172,60 @@ export class PaletteUI {
     const controls = h('div', 'controls');
     this.clearBtn = document.createElement('button');
     this.clearBtn.className = 'btn clear';
-    this.clearBtn.textContent = '\u21BA Clear';
+    this.clearBtn.textContent = T.clear;
     this.runBtn = document.createElement('button');
     this.runBtn.className = 'btn run';
-    this.runBtn.textContent = '\u25B6 Run';
+    this.runBtn.textContent = T.run;
     controls.append(this.clearBtn, this.runBtn);
 
-    // Level select overlay
+    // Level-select overlay
     this.levelSelectOverlay = h('div', 'overlay lvl-select-overlay');
     const lsCard = h('div', 'card lvl-select-card');
     const lsHeader = h('div', 'lvl-select-header');
     const lsTitle = h('span', 'lvl-select-title');
-    lsTitle.textContent = 'Pick a level';
+    lsTitle.textContent = T.pickLevel;
     const lsClose = document.createElement('button');
     lsClose.className = 'lvl-select-close';
     lsClose.textContent = '\u2715';
-    lsClose.setAttribute('aria-label', 'Close level select');
+    lsClose.setAttribute('aria-label', T.closeLevelSelect);
     lsHeader.append(lsTitle, lsClose);
     this.levelSelectGrid = h('div', 'lvl-select-grid');
-    lsCard.append(lsHeader, this.levelSelectGrid);
+    this.customListEl = h('div', 'lvl-select-custom');
+    lsCard.append(lsHeader, this.levelSelectGrid, this.customListEl);
     this.levelSelectOverlay.appendChild(lsCard);
 
-    root.append(topbar, stage, this.programEl, palette, controls, this.levelSelectOverlay);
+    // Settings overlay
+    this.settingsOverlay = h('div', 'overlay settings-overlay');
+    const sCard = h('div', 'card settings-card');
+    const sHeader = h('div', 'lvl-select-header');
+    const sTitle = h('span', 'lvl-select-title');
+    sTitle.textContent = T.settingsTitle;
+    const sClose = document.createElement('button');
+    sClose.className = 'lvl-select-close';
+    sClose.textContent = '\u2715';
+    sClose.setAttribute('aria-label', T.closeSettings);
+    sHeader.append(sTitle, sClose);
+    const sBody = h('div', 'settings-body');
+    sBody.append(
+      this.buildToggle('easy', T.easy, T.easyHint),
+      this.buildToggle('hold', T.holdOnError, T.holdOnErrorHint),
+      this.buildToggle('music', T.music, ''),
+      this.buildToggle('sound', T.sound, ''),
+    );
+    sCard.append(sHeader, sBody);
+    this.settingsOverlay.appendChild(sCard);
 
-    // Event listeners
+    root.append(
+      topbar,
+      stage,
+      this.programEl,
+      palette,
+      controls,
+      this.levelSelectOverlay,
+      this.settingsOverlay,
+    );
+
+    // --- events ---
     this.runBtn.addEventListener('click', () => this.cb.onRun());
     this.clearBtn.addEventListener('click', () => this.cb.onClear());
     this.prevBtn.addEventListener('click', () => this.cb.onPrevLevel());
@@ -171,22 +234,47 @@ export class PaletteUI {
       if (this.levelIndex + 1 < this.levelTotal) this.cb.onNextLevel();
       else this.cb.onPlayAgain();
     });
-    this.easyBtn.addEventListener('click', () => {
-      this.easyBtn.classList.toggle('on');
-      this.cb.onToggleEasy?.(this.easyBtn.classList.contains('on'));
-    });
-    this.muteBtn.addEventListener('click', () => {
-      this.muted = !this.muted;
-      this.muteBtn.textContent = this.muted ? '\uD83D\uDD07' : '\uD83D\uDD0A';
-      this.cb.onToggleMute?.(this.muted);
-    });
     this.levelSelectBtn.addEventListener('click', () => this.openLevelSelect());
+    this.editorBtn.addEventListener('click', () => this.cb.onOpenEditor?.());
+    this.settingsBtn.addEventListener('click', () => this.openSettings());
     lsClose.addEventListener('click', () => this.closeLevelSelect());
+    sClose.addEventListener('click', () => this.closeSettings());
     this.levelSelectOverlay.addEventListener('click', (ev) => {
       if (ev.target === this.levelSelectOverlay) this.closeLevelSelect();
     });
+    this.settingsOverlay.addEventListener('click', (ev) => {
+      if (ev.target === this.settingsOverlay) this.closeSettings();
+    });
 
     return { el: root, canvas };
+  }
+
+  private buildToggle(key: ToggleKey, label: string, hint: string): HTMLElement {
+    const row = document.createElement('button');
+    row.className = 'toggle-row';
+    row.type = 'button';
+    const lab = h('span', 'tog-label');
+    lab.textContent = label;
+    row.append(lab);
+    if (hint) {
+      const hn = h('span', 'tog-hint');
+      hn.textContent = hint;
+      row.append(hn);
+    }
+    const sw = h('span', 'switch');
+    row.append(sw);
+    row.addEventListener('click', () => {
+      // optimistic flip; main reconciles via setSettings
+      const next = !row.classList.contains('on');
+      row.classList.toggle('on', next);
+      sw.classList.toggle('on', next);
+      if (key === 'easy') this.cb.onToggleEasy?.(next);
+      else if (key === 'hold') this.cb.onToggleHoldOnError?.(next);
+      else if (key === 'music') this.cb.onToggleMusic?.(next);
+      else this.cb.onToggleSound?.(next);
+    });
+    this.toggles[key] = row;
+    return row;
   }
 
   setLevelInfo(index: number, total: number, name: string) {
@@ -196,8 +284,32 @@ export class PaletteUI {
     this.prevBtn.disabled = index <= 0;
     this.nextBtn.disabled = index + 1 >= total;
     this.overlayBtn.textContent =
-      index + 1 < total ? 'Next \u25B6' : 'Play again \u21BB';
+      index + 1 < total ? T.next : T.playAgain;
     this.rebuildLevelGrid();
+  }
+
+  /** Feed the full level list (built-in + custom) for the picker. */
+  setLevelList(names: string[], customStart: number, ids: number[]) {
+    this.levelNames = names;
+    this.customStart = customStart;
+    this.customIds = ids;
+    this.rebuildLevelGrid();
+  }
+
+  setSettings(s: SettingsState) {
+    this.settings = s;
+    const map: Record<ToggleKey, boolean> = {
+      easy: s.easy,
+      hold: s.holdOnError,
+      music: s.music,
+      sound: s.sound,
+    };
+    (Object.keys(map) as ToggleKey[]).forEach((k) => {
+      const row = this.toggles[k];
+      const sw = row.querySelector('.switch');
+      row.classList.toggle('on', map[k]);
+      sw?.classList.toggle('on', map[k]);
+    });
   }
 
   sync(e: GameEngine) {
@@ -211,22 +323,21 @@ export class PaletteUI {
       chip.classList.toggle('active', active && i === e.pc);
     });
 
-    const editing = e.phase === 'editing';
+    // editing OR held-on-error → controls stay usable (that's how you reset)
+    const editing = e.phase === 'editing' || e.phase === 'error';
     const hasProgram = e.program.length > 0;
     this.runBtn.disabled = !(editing && hasProgram);
     this.clearBtn.disabled = !(editing && hasProgram);
     this.cmdButtons.forEach((b) => (b.disabled = !editing));
 
-    // Sync easy toggle from engine
-    this.easyBtn.classList.toggle('on', e.easyMode);
+    // highlight the failed step while held on error
+    const errIdx = e.phase === 'error' ? e.errorStep : -1;
+    this.chips.forEach((chip, i) =>
+      chip.classList.toggle('error', i === errIdx),
+    );
 
     const won = e.phase === 'won';
     this.overlay.classList.toggle('show', won);
-  }
-
-  setMuted(m: boolean) {
-    this.muted = m;
-    this.muteBtn.textContent = m ? '\uD83D\uDD07' : '\uD83D\uDD0A';
   }
 
   private rebuildChips(program: Command[]) {
@@ -234,7 +345,7 @@ export class PaletteUI {
     this.chips = [];
     if (program.length === 0) {
       const empty = h('span', 'empty');
-      empty.textContent = 'Tap the buttons below to add steps\u2026';
+      empty.textContent = T.emptyHint;
       this.programEl.appendChild(empty);
       return;
     }
@@ -260,19 +371,58 @@ export class PaletteUI {
     this.levelSelectOverlay.classList.remove('show');
   }
 
+  private openSettings() {
+    this.settingsOverlay.classList.add('show');
+  }
+
+  private closeSettings() {
+    this.settingsOverlay.classList.remove('show');
+  }
+
   private rebuildLevelGrid() {
     this.levelSelectGrid.innerHTML = '';
-    for (let i = 0; i < this.levelTotal; i++) {
+    this.customListEl.innerHTML = '';
+    const builtCount = Math.min(this.customStart, this.levelNames.length);
+    for (let i = 0; i < builtCount; i++) {
       const btn = document.createElement('button');
-      btn.className =
-        'lvl-pick' + (i === this.levelIndex ? ' current' : '');
+      btn.className = 'lvl-pick' + (i === this.levelIndex ? ' current' : '');
       btn.textContent = `${i + 1}`;
+      btn.title = this.levelNames[i] ?? '';
       btn.setAttribute('aria-label', `Level ${i + 1}`);
       btn.addEventListener('click', () => {
         this.cb.onSelectLevel?.(i);
         this.closeLevelSelect();
       });
       this.levelSelectGrid.appendChild(btn);
+    }
+
+    // custom levels section
+    if (this.levelNames.length > builtCount) {
+      const heading = h('div', 'lvl-select-subhead');
+      heading.textContent = T.myLevels;
+      this.customListEl.appendChild(heading);
+      for (let i = builtCount; i < this.levelNames.length; i++) {
+        const row = h('div', 'custom-lvl');
+        const pick = document.createElement('button');
+        pick.className =
+          'custom-lvl-pick' + (i === this.levelIndex ? ' current' : '');
+        pick.textContent = `\u2728 ${this.levelNames[i] ?? 'Level'}`;
+        pick.addEventListener('click', () => {
+          this.cb.onSelectLevel?.(i);
+          this.closeLevelSelect();
+        });
+        const del = document.createElement('button');
+        del.className = 'custom-lvl-del';
+        del.textContent = '\u2715';
+        del.setAttribute('aria-label', 'Verwijder level');
+        del.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          const id = this.customIds[i];
+          if (id !== undefined) this.cb.onDeleteCustomLevel?.(id);
+        });
+        row.append(pick, del);
+        this.customListEl.appendChild(row);
+      }
     }
   }
 }

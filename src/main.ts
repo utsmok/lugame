@@ -4,8 +4,15 @@ import { AudioBus, type SfxName } from './game/audio';
 import { GameEngine } from './game/engine';
 import { LEVELS } from './game/levels';
 import { Renderer } from './game/render';
-import { PaletteUI } from './ui/palette';
-import type { Command, GameEvent } from './game/types';
+import { PaletteUI, type SettingsState } from './ui/palette';
+import { LevelEditor } from './ui/editor';
+import {
+  deleteCustomLevel,
+  loadCustomLevels,
+  saveCustomLevel,
+} from './storage';
+import { T } from './i18n';
+import type { Command, GameEvent, Level } from './game/types';
 
 const EVENT_SFX: Record<GameEvent, SfxName> = {
   step: 'step',
@@ -20,17 +27,44 @@ const EVENT_SFX: Record<GameEvent, SfxName> = {
   click: 'click',
 };
 
+const SETTINGS_KEY = 'lugame.settings';
+
+function loadSettings(): SettingsState {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (raw) {
+      const s = JSON.parse(raw) as unknown;
+      if (typeof s === 'object' && s !== null) {
+        const o = s as Record<string, unknown>;
+        return {
+          easy: !!o.easy,
+          holdOnError: !!o.holdOnError,
+          music: o.music !== false,
+          sound: o.sound !== false,
+        };
+      }
+    }
+  } catch {
+    /* ignore corrupt settings */
+  }
+  return { easy: false, holdOnError: false, music: true, sound: true };
+}
+
 class App {
   private audio = new AudioBus();
-  private engine = new GameEngine(LEVELS[0]);
-  private renderer: Renderer;
-  private ui: PaletteUI;
+  private levels: Level[] = [...LEVELS, ...loadCustomLevels()];
   private levelIndex = 0;
-  private easy = false;
+  private engine = new GameEngine(LEVELS[0]);
+  private renderer!: Renderer;
+  private ui!: PaletteUI;
+  private editor?: LevelEditor;
+  private settings: SettingsState = loadSettings();
   private last = performance.now();
 
   constructor() {
+    document.title = T.docTitle;
     const mount = document.getElementById('app')!;
+    this.engine = new GameEngine(this.levels[0]);
     this.ui = new PaletteUI(mount, {
       onAdd: (c) => this.engine.enqueue(c),
       onRun: () => {
@@ -42,18 +76,24 @@ class App {
       onPrevLevel: () => this.changeLevel(this.levelIndex - 1),
       onNextLevel: () => this.changeLevel(this.levelIndex + 1),
       onPlayAgain: () => this.changeLevel(this.levelIndex),
-      onToggleEasy: (b) => { this.easy = b; this.engine.easyMode = b; },
-      onToggleMute: (b) => this.audio.setMuted(b),
       onRemoveChip: (i) => this.engine.removeAt(i),
       onSelectLevel: (i) => this.changeLevel(i),
+      onDeleteCustomLevel: (id) => this.deleteCustom(id),
+      onOpenEditor: (seed) => this.openEditor(seed),
+      onToggleEasy: (b) => this.setSetting('easy', b),
+      onToggleHoldOnError: (b) => this.setSetting('holdOnError', b),
+      onToggleMusic: (b) => this.setSetting('music', b),
+      onToggleSound: (b) => this.setSetting('sound', b),
     });
     this.renderer = new Renderer(this.ui.canvas);
     this.renderer.loadDecor();
     this.renderer.loadGround();
 
-    this.engine.onEvent = (e) => this.audio.play(EVENT_SFX[e]);
+    this.applySettings();
 
-    this.ui.setLevelInfo(0, LEVELS.length, this.engine.level.name);
+    this.refreshLevelList();
+    this.ui.setLevelInfo(this.levelIndex, this.levels.length, this.engine.level.name);
+    this.ui.setSettings(this.settings);
 
     this.resize();
     window.addEventListener('resize', () => this.resize());
@@ -63,13 +103,91 @@ class App {
     requestAnimationFrame((t) => this.loop(t));
   }
 
+  /** Bind the engine's event bus to audio, gated by the sound setting. */
+  private wireAudio() {
+    this.engine.onEvent = (e) => {
+      if (this.settings.sound) this.audio.play(EVENT_SFX[e]);
+    };
+  }
+
+  /** Apply persisted settings to engine + audio. */
+  private applySettings() {
+    this.engine.easyMode = this.settings.easy;
+    this.engine.holdOnError = this.settings.holdOnError;
+    this.audio.setMuted(!this.settings.sound);
+    this.audio.setMusicEnabled(this.settings.music);
+    this.wireAudio();
+  }
+
+  private setSetting<K extends keyof SettingsState>(
+    key: K,
+    value: SettingsState[K],
+  ) {
+    this.settings[key] = value;
+    if (key === 'easy') this.engine.easyMode = value;
+    else if (key === 'holdOnError') this.engine.holdOnError = value;
+    else if (key === 'music') this.audio.setMusicEnabled(value);
+    else if (key === 'sound') this.audio.setMuted(!value);
+    try {
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(this.settings));
+    } catch {
+      /* storage may be unavailable */
+    }
+    this.ui.setSettings(this.settings);
+  }
+
+  private refreshLevelList() {
+    this.ui.setLevelList(
+      this.levels.map((l) => l.name),
+      LEVELS.length,
+      this.levels.map((l) => l.id),
+    );
+  }
+
   private changeLevel(index: number) {
-    if (index < 0 || index >= LEVELS.length) return;
+    if (index < 0 || index >= this.levels.length) return;
     this.levelIndex = index;
-    this.engine = new GameEngine(LEVELS[index]);
-    this.engine.onEvent = (e) => this.audio.play(EVENT_SFX[e]);
-    this.engine.easyMode = this.easy;
-    this.ui.setLevelInfo(index, LEVELS.length, this.engine.level.name);
+    this.engine = new GameEngine(this.levels[index]);
+    this.engine.easyMode = this.settings.easy;
+    this.engine.holdOnError = this.settings.holdOnError;
+    this.wireAudio();
+    this.ui.setLevelInfo(index, this.levels.length, this.engine.level.name);
+  }
+
+  // ── editor ──────────────────────────────────────────────
+  private openEditor(seed?: Level) {
+    if (!this.editor) {
+      this.editor = new LevelEditor(document.body, {
+        onPlay: (lvl) => this.playTransient(lvl),
+        onSave: (lvl) => this.saveCustom(lvl),
+        onClose: () => {},
+      });
+    }
+    this.editor.open(seed);
+  }
+
+  private playTransient(level: Level) {
+    this.engine = new GameEngine(level);
+    this.engine.easyMode = this.settings.easy;
+    this.engine.holdOnError = this.settings.holdOnError;
+    this.wireAudio();
+    this.ui.setLevelInfo(this.levelIndex, this.levels.length, level.name);
+  }
+
+  private saveCustom(level: Level) {
+    const list = saveCustomLevel(level);
+    this.levels = [...LEVELS, ...list];
+    this.refreshLevelList();
+    const idx = this.levels.findIndex((l) => l.id === level.id);
+    if (idx >= 0) this.changeLevel(idx);
+  }
+
+  private deleteCustom(id: number) {
+    const list = deleteCustomLevel(id);
+    this.levels = [...LEVELS, ...list];
+    this.refreshLevelList();
+    const idx = this.levelIndex < this.levels.length ? this.levelIndex : this.levels.length - 1;
+    this.changeLevel(idx);
   }
 
   private resize() {
@@ -114,7 +232,7 @@ class App {
     const unlock = () => {
       this.audio.resume();
       void this.audio.loadOverrides();
-      this.audio.startMusic();
+      if (this.settings.music) this.audio.startMusic();
       window.removeEventListener('pointerdown', unlock);
       window.removeEventListener('keydown', unlock);
     };
