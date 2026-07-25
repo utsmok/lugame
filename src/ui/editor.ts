@@ -1,9 +1,9 @@
 // Level Editor for lugame — self-contained UI with own styles.
-// Dutch strings; scoped CSS under `.lugame-editor`.
+// UI strings go through T (i18n); scoped CSS under `.lugame-editor`.
 
 import type { Level, Pos, Dir, AnimalKind } from '../game/types';
-import { EMOJI } from '../game/types';
 import { nextCustomId } from '../storage';
+import { T } from '../i18n';
 
 /* ------------------------------------------------------------------ */
 /*  Styles (injected once)                                             */
@@ -287,11 +287,14 @@ type Tool =
   | 'wipe';
 
 const DIRS: readonly Dir[] = [0, 90, 180, 270];
-const DIR_LABEL: Record<Dir, string> = { 0: '\u2191N', 90: '\u2192E', 180: '\u2193S', 270: '\u2190W' };
 
-const TOOL_LABEL: Record<Tool, string> = {
-  pad: 'Pad', eraser: 'Gras', start: 'Start', goal: 'Koekje',
-  cow: 'Koe', pig: 'Varken', sheep: 'Schaap', chicken: 'Kip', wipe: 'Wissen',
+// Editor authors farm-style levels; markers mirror the farm animal tool set.
+// (The board renderer resolves emoji from the active theme — see theme.ts.)
+const EDITOR_ANIMAL_EMOJI: Record<string, string> = {
+  cow: '\u{1F42E}',
+  pig: '\u{1F437}',
+  sheep: '\u{1F411}',
+  chicken: '\u{1F414}',
 };
 
 const TOOL_DEF: readonly { t: Tool; icon: string }[] = [
@@ -390,18 +393,23 @@ export class LevelEditor {
     // Header
     const hdr = document.createElement('div');
     hdr.className = 'ed-header';
-    hdr.innerHTML = `<span class="ed-title">Level Bewerker</span>`;
+    hdr.innerHTML = `<span class="ed-title">${T.editorTitle}</span>`;
 
     // Sidebar
     const side = document.createElement('div');
     side.className = 'ed-sidebar';
 
-    side.appendChild(this.sectionLabel('Gereedschap'));
+    side.appendChild(this.sectionLabel(T.edTools));
     const toolsDiv = document.createElement('div');
     toolsDiv.className = 'ed-tools';
+    const TOOL_LABEL: Record<Tool, string> = {
+      pad: T.toolPad, eraser: T.toolEraser, start: T.toolStart, goal: T.toolGoal,
+      cow: T.toolCow, pig: T.toolPig, sheep: T.toolSheep, chicken: T.toolChicken, wipe: T.toolWipe,
+    };
     for (const def of TOOL_DEF) {
       const b = document.createElement('button');
       b.className = 'ed-tool' + (def.t === this.activeTool ? ' active' : '');
+      b.dataset.tool = def.t;
       b.innerHTML = `<span class="ed-tool-icon">${def.icon}</span>${TOOL_LABEL[def.t]}`;
       b.addEventListener('click', () => this.setTool(def.t));
       toolsDiv.appendChild(b);
@@ -409,14 +417,15 @@ export class LevelEditor {
     side.appendChild(toolsDiv);
 
     // Size steppers
-    side.appendChild(this.sectionLabel('Grootte'));
-    side.appendChild(this.stepperRow('Kolommen', this.cols, (v) => this.resizeCols(v)));
-    side.appendChild(this.stepperRow('Rijen', this.rows, (v) => this.resizeRows(v)));
+    side.appendChild(this.sectionLabel(T.edSize));
+    side.appendChild(this.stepperRow('cols', T.edCols, this.cols, (v) => this.resizeCols(v)));
+    side.appendChild(this.stepperRow('rows', T.edRows, this.rows, (v) => this.resizeRows(v)));
 
     // Direction
-    side.appendChild(this.sectionLabel('Start-richting'));
+    side.appendChild(this.sectionLabel(T.edStartDir));
     const dirsDiv = document.createElement('div');
     dirsDiv.className = 'ed-dirs';
+    const DIR_LABEL: Record<Dir, string> = { 0: T.dirN, 90: T.dirE, 180: T.dirS, 270: T.dirW };
     for (const d of DIRS) {
       const b = document.createElement('button');
       b.className = 'ed-dir-btn' + (d === this.startDir ? ' active' : '');
@@ -427,21 +436,27 @@ export class LevelEditor {
     side.appendChild(dirsDiv);
 
     // Name
-    side.appendChild(this.sectionLabel('Naam'));
+    side.appendChild(this.sectionLabel(T.edName));
     this.nameInput = document.createElement('input');
     this.nameInput.className = 'ed-input';
     this.nameInput.type = 'text';
-    this.nameInput.placeholder = 'Mijn level';
+    this.nameInput.placeholder = T.edNamePlaceholder;
     side.appendChild(this.nameInput);
 
     // Energy
-    side.appendChild(this.sectionLabel('Energie'));
+    side.appendChild(this.sectionLabel(T.edEnergy));
     this.energySelect = document.createElement('select');
     this.energySelect.className = 'ed-select';
-    for (const opt of ['Geen', '1', '2', '3']) {
+    const energyOpts: { v: string; t: string }[] = [
+      { v: 'none', t: T.edEnergyNone },
+      { v: '1', t: '1' },
+      { v: '2', t: '2' },
+      { v: '3', t: '3' },
+    ];
+    for (const opt of energyOpts) {
       const o = document.createElement('option');
-      o.value = opt;
-      o.textContent = opt;
+      o.value = opt.v;
+      o.textContent = opt.t;
       this.energySelect.appendChild(o);
     }
     side.appendChild(this.energySelect);
@@ -459,12 +474,12 @@ export class LevelEditor {
     const actions = document.createElement('div');
     actions.className = 'ed-actions';
     actions.innerHTML = `
-      <button class="ed-btn play" data-act="play">\u25B6 Speel</button>
-      <button class="ed-btn save" data-act="save">\u{1F4BE} Bewaar</button>
-      <button class="ed-btn copy" data-act="copy">\u{1F4CB} Kopieer</button>
-      <button class="ed-btn paste" data-act="paste">\u{1F4CE} Plak</button>
-      <button class="ed-btn clear" data-act="clear">\u{1F5D1} Leeg</button>
-      <button class="ed-btn close" data-act="close">\u2715 Sluiten</button>
+      <button class="ed-btn play" data-act="play">${T.edPlay}</button>
+      <button class="ed-btn save" data-act="save">${T.edSave}</button>
+      <button class="ed-btn copy" data-act="copy">${T.edCopy}</button>
+      <button class="ed-btn paste" data-act="paste">${T.edPaste}</button>
+      <button class="ed-btn clear" data-act="clear">${T.edClear}</button>
+      <button class="ed-btn close" data-act="close">${T.edClose}</button>
     `;
     actions.addEventListener('click', (e) => {
       const tgt = (e.target as HTMLElement).closest<HTMLElement>('[data-act]');
@@ -503,6 +518,7 @@ export class LevelEditor {
   }
 
   private stepperRow(
+    which: 'cols' | 'rows',
     label: string,
     value: number,
     onChange: (v: number) => void,
@@ -516,7 +532,7 @@ export class LevelEditor {
     minus.textContent = '\u2212';
     const valSpan = document.createElement('span');
     valSpan.textContent = String(value);
-    if (label === 'Kolommen') this.colsVal = valSpan; else this.rowsVal = valSpan;
+    if (which === 'cols') this.colsVal = valSpan; else this.rowsVal = valSpan;
     const plus = document.createElement('button');
     plus.textContent = '+';
     minus.addEventListener('click', () => {
@@ -539,9 +555,7 @@ export class LevelEditor {
     this.activeTool = t;
     this.root.querySelectorAll('.ed-tool').forEach((b) => {
       const el = b as HTMLElement;
-      // Match by label text suffix
-      const label = TOOL_LABEL[t];
-      el.classList.toggle('active', el.textContent?.trim().endsWith(label) ?? false);
+      el.classList.toggle('active', el.dataset.tool === t);
     });
   }
 
@@ -603,7 +617,7 @@ export class LevelEditor {
           marker.textContent = '\u{1F36A}';
         } else {
           const animal = this.animals.find((a) => a.pos.c === c && a.pos.r === r);
-          if (animal) marker.textContent = EMOJI[animal.kind];
+          if (animal) marker.textContent = EDITOR_ANIMAL_EMOJI[animal.kind];
         }
         if (marker.textContent) cell.appendChild(marker);
 
@@ -671,18 +685,18 @@ export class LevelEditor {
   /* ---- validation -------------------------------------------- */
 
   private validate(): string | null {
-    if (this.pathSet.size === 0) return 'Zet tenminste \xe9\xe9n padcel.';
-    if (!this.start) return 'Plaats een startpunt.';
-    if (!this.pathSet.has(`${this.start.c},${this.start.r}`)) return 'Start moet op een padcel staan.';
-    if (this.goals.length === 0) return 'Zet tenminste \xe9\xe9n koekje.';
+    if (this.pathSet.size === 0) return T.edErrPath;
+    if (!this.start) return T.edErrStart;
+    if (!this.pathSet.has(`${this.start.c},${this.start.r}`)) return T.edErrStartOnPath;
+    if (this.goals.length === 0) return T.edErrGoal;
     for (const g of this.goals) {
-      if (!this.pathSet.has(`${g.c},${g.r}`)) return 'Koekjes moeten op padcellen staan.';
+      if (!this.pathSet.has(`${g.c},${g.r}`)) return T.edErrGoalOnPath;
     }
     for (const a of this.animals) {
-      if (!this.pathSet.has(`${a.pos.c},${a.pos.r}`)) return 'Dieren moeten op padcellen staan.';
+      if (!this.pathSet.has(`${a.pos.c},${a.pos.r}`)) return T.edErrAnimalOnPath;
     }
     if (this.goals.some((g) => g.c === this.start!.c && g.r === this.start!.r))
-      return 'Start en koekje mogen niet op dezelfde cel.';
+      return T.edErrStartGoal;
     return null;
   }
 
@@ -691,7 +705,7 @@ export class LevelEditor {
   private buildLevel(tempId?: number): Level {
     return {
       id: tempId ?? 0,
-      name: this.nameInput.value.trim() || 'Mijn level',
+      name: this.nameInput.value.trim() || T.edNamePlaceholder,
       cols: this.cols,
       rows: this.rows,
       path: [...this.pathSet].map((k) => { const [c, r] = k.split(',').map(Number); return { c, r }; }),
@@ -699,7 +713,7 @@ export class LevelEditor {
       startDir: this.startDir,
       goals: this.goals.map((g) => ({ ...g })),
       animals: this.animals.map((a) => ({ pos: { ...a.pos }, kind: a.kind })),
-      energy: this.energySelect.value === 'Geen' ? undefined : Number(this.energySelect.value),
+      energy: this.energySelect.value === 'none' ? undefined : Number(this.energySelect.value),
     };
   }
 
@@ -723,7 +737,7 @@ export class LevelEditor {
   private doCopy(): void {
     try {
       navigator.clipboard.writeText(JSON.stringify(this.buildLevel(0), null, 2)).then(() => {
-        this.copyFeedback.textContent = 'Gekopieerd!';
+        this.copyFeedback.textContent = T.edCopied;
         clearTimeout(this.copyTid);
         this.copyTid = window.setTimeout(() => { this.copyFeedback.textContent = ''; }, 1500);
       });
@@ -732,7 +746,7 @@ export class LevelEditor {
 
   private doPaste(): void {
     try {
-      const raw = window.prompt('Plak level JSON:');
+      const raw = window.prompt(T.edPastePrompt);
       if (!raw) return;
       const parsed: unknown = JSON.parse(raw);
       if (typeof parsed !== 'object' || parsed === null) return;
@@ -761,7 +775,7 @@ export class LevelEditor {
       if (sd === 0 || sd === 90 || sd === 180 || sd === 270) this.startDir = sd as Dir;
     const en = num('energy');
     if (en === 1 || en === 2 || en === 3) this.energySelect.value = String(en);
-    else this.energySelect.value = 'Geen';
+    else this.energySelect.value = 'none';
 
       this.pathSet.clear();
       if ('path' in o && Array.isArray(o.path)) {

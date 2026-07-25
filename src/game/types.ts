@@ -11,7 +11,10 @@ export interface Pos {
   r: number;
 }
 
-export type AnimalKind = 'cow' | 'pig' | 'sheep' | 'chicken';
+// Obstacle kind id — a plain string (e.g. "cow", "snake"). Validity is checked
+// against the active theme's `animals` at runtime (see src/game/theme.ts), so a
+// space theme could have asteroids without changing this union.
+export type AnimalKind = string;
 
 export interface AnimalSpawn {
   pos: Pos;
@@ -64,6 +67,10 @@ export function dirVec(d: Dir): Pos {
       return { c: 0, r: 1 }; // S
     case 270:
       return { c: -1, r: 0 }; // W
+    default: {
+      const _: never = d; // F5: exhaustiveness — a 5th Dir value fails compile here
+      return _;
+    }
   }
 }
 
@@ -97,12 +104,8 @@ export function fanCells(pos: Pos, d: Dir): Pos[] {
   ];
 }
 
-export const EMOJI: Record<AnimalKind, string> = {
-  cow: '🐮',
-  pig: '🐷',
-  sheep: '🐑',
-  chicken: '🐔',
-};
+// Animal emoji is now theme-derived (built from theme.animals in the Renderer;
+// see src/game/theme.ts `makeEmojiResolver`). COMMAND_EMOJI below stays global.
 
 export const COMMAND_EMOJI: Record<Command, string> = {
   forward: '⬆️',
@@ -111,9 +114,3 @@ export const COMMAND_EMOJI: Record<Command, string> = {
   fan: '🪶',
 };
 
-export const COMMAND_LABEL: Record<Command, string> = {
-  forward: 'Stap',
-  left: 'Links',
-  right: 'Rechts',
-  fan: 'Ksst!',
-};

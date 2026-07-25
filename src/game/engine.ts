@@ -260,6 +260,10 @@ export class GameEngine {
         if (scaredAny) this.emit('flee');
         break;
       }
+      default: {
+        const _: never = cmd; // F5: exhaustiveness — a new Command fails compile here
+        void _;
+      }
     }
   }
 

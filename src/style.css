@@ -5,12 +5,14 @@
   --ink: #f5f7ff;
   --ink-dim: #aab3d6;
   --accent: #ffd34e;
-  --good: #36c96a;
-  --bad: #ff5d6c;
-  --fwd: #4ea8ff;
-  --left: #b06bff;
-  --right: #ff8a3d;
-  --fan: #1bbf9e;
+  /* P0-2: darkened so white labels pass WCAG-AA 4.5:1 (hue preserved).
+     Ratios computed via relative luminance — see fix-pass report. */
+  --good: #248546;  /* was #36c96a — #fff now 4.65:1 (was 2.16:1) */
+  --bad: #eb0016;   /* was #ff5d6c — #fff now 4.62:1 (was 2.99:1) */
+  --fwd: #0073e3;   /* was #4ea8ff — #fff now 4.60:1 (was 2.51:1) */
+  --left: #9941ff;  /* was #b06bff — #fff now 4.61:1 (was 3.28:1) */
+  --right: #c74f00; /* was #ff8a3d — #fff now 4.62:1 (was 2.35:1) */
+  --fan: #13846e;   /* was #1bbf9e — #fff now 4.61:1 (was 2.34:1) */
   --shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
   font-family: "Baloo 2", "Comic Sans MS", "Nunito", system-ui, -apple-system,
     "Segoe UI", Roboto, sans-serif;
@@ -67,8 +69,8 @@ body {
 
 /* Topbar utility buttons (level grid, easy, mute) */
 .topbar-btn {
-  height: 2.4rem;
-  min-width: 2.4rem;
+  height: 3rem;      /* I-03: 48px touch target (was 2.4rem / 38.4px) */
+  min-width: 3rem;   /* I-03: 48px (was 2.4rem) */
   padding: 0 0.55rem;
   border-radius: 10px;
   border: 1.5px solid rgba(255, 255, 255, 0.1);
@@ -105,8 +107,8 @@ body {
 }
 
 .lvl-btn {
-  width: 2.6rem;
-  height: 2.6rem;
+  width: 3rem;   /* I-04: 48px touch target (was 2.6rem / 41.6px) */
+  height: 3rem;  /* I-04: 48px (was 2.6rem) */
   border-radius: 50%;
   border: none;
   background: var(--panel-2);
@@ -228,13 +230,13 @@ canvas#board {
   position: absolute;
   top: -2px;
   right: -2px;
-  width: 1.1rem;
-  height: 1.1rem;
+  width: 1.5rem;     /* Q-1: 24px tap target (was 1.1rem / 17.6px) */
+  height: 1.5rem;    /* Q-1: 24px (was 1.1rem) */
   border-radius: 50%;
   background: var(--bad);
   color: #fff;
-  font-size: 0.65rem;
-  line-height: 1.1rem;
+  font-size: 0.7rem; /* was 0.65rem */
+  line-height: 1.5rem;
   text-align: center;
   opacity: 0;
   transition: opacity 0.15s ease;
@@ -244,6 +246,13 @@ canvas#board {
 .chip:hover .chip-remove,
 .chip:active .chip-remove {
   opacity: 1;
+}
+/* Q-1: touch devices have no hover — always reveal the ✕ so removal is discoverable. */
+@media (hover: none) {
+  .chip-remove {
+    opacity: 1;
+    pointer-events: auto;
+  }
 }
 
 /* ── Command palette ────────────────────────────────────── */
@@ -387,8 +396,8 @@ canvas#board {
 }
 
 .lvl-select-close {
-  width: 2.4rem;
-  height: 2.4rem;
+  width: 3rem;   /* I-05: 48px touch target (was 2.4rem / 38.4px) */
+  height: 3rem;  /* I-05: 48px (was 2.4rem) */
   border-radius: 50%;
   border: none;
   background: var(--bad);
@@ -502,6 +511,7 @@ canvas#board {
   text-align: left;
   cursor: pointer;
   font: inherit;
+  min-height: 48px; /* I-06: row is the click target — ≥48px hit area (visual switch stays compact) */
 }
 .toggle-row .tog-label { font-weight: 700; }
 .toggle-row .tog-hint {
@@ -536,6 +546,36 @@ canvas#board {
 }
 .switch.on { background: var(--good); }
 .switch.on::after { transform: translateX(20px); }
+
+/* ── Language picker (settings) ─────────────────────────── */
+.lang-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0.7rem 0.8rem;
+  background: var(--panel-2);
+  border-radius: 12px;
+}
+.lang-row .tog-label { font-weight: 700; }
+.lang-btns { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+.lang-btn {
+  min-height: 48px;
+  padding: 0 0.9rem;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.lang-btn.active {
+  border-color: var(--accent);
+  background: #28335f;
+}
+.lang-btn:active { transform: scale(0.96); }
 
 /* ── Custom levels list ────────────────────────────────── */
 .lvl-select-custom {
@@ -625,4 +665,28 @@ canvas#board {
   0% { transform: scale(1); }
   40% { transform: scale(1.5); background: var(--accent); }
   100% { transform: scale(1); }
+}
+
+/* I-10: visible keyboard focus. :focus-visible only fires for keyboard/AT
+   navigation, never for mouse clicks, so it stays out of the touch UX.
+   :where() keeps specificity 0 so it never fights existing rules. */
+:where(button, [role="switch"], [role="button"], [tabindex]):focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* P0-1: honour prefers-reduced-motion. Neutralises the decorative keyframes
+   (chip-err infinite pulse → 1 instant frame; badge-pop → instant). The
+   current-step chip highlight (.chip.active static accent ring) is
+   informational status, NOT motion, so it is intentionally preserved. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
 }

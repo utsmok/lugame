@@ -1,0 +1,32 @@
+{
+  "id": "farm",
+  "background": {
+    "stops": [
+      { "offset": 0, "color": "#a8e6a3" },
+      { "offset": 0.5, "color": "#88d48f" },
+      { "offset": 1, "color": "#6bc269" }
+    ]
+  },
+  "cell": { "pathFill": "#caa46a", "grassFill": "#7cc77a" },
+  "ground": {
+    "grass": "assets/img/tile_grass.png",
+    "dirt": "assets/img/tile_dirt.png"
+  },
+  "decor": [
+    { "file": "assets/img/tree.png", "h": 1.0 },
+    { "file": "assets/img/tree2.png", "h": 1.05 },
+    { "file": "assets/img/pine.png", "h": 0.78 },
+    { "file": "assets/img/bush.png", "h": 0.62 },
+    { "file": "assets/img/flowers.png", "h": 0.34 },
+    { "file": "assets/img/flowers2.png", "h": 0.3 },
+    { "file": "assets/img/grass.png", "h": 0.3 }
+  ],
+  "goalEmoji": "🍪",
+  "bgm": "assets/audio/music.mp3",
+  "animals": [
+    { "id": "cow", "emoji": "🐮" },
+    { "id": "pig", "emoji": "🐷" },
+    { "id": "sheep", "emoji": "🐑" },
+    { "id": "chicken", "emoji": "🐔" }
+  ]
+}

@@ -1,11 +1,11 @@
 import type { GameEngine } from '../game/engine';
 import {
   COMMAND_EMOJI,
-  COMMAND_LABEL,
   type Command,
   type Level,
 } from '../game/types';
-import { T } from '../i18n';
+import { T, availableLocales, getLocale, setLocale, tr } from '../i18n';
+import { THEME_REGISTRY, getStoredTheme } from '../game/theme';
 
 export interface PaletteCallbacks {
   onAdd: (cmd: Command) => void;
@@ -24,6 +24,7 @@ export interface PaletteCallbacks {
   onToggleHoldOnError?: (hold: boolean) => void;
   onToggleMusic?: (on: boolean) => void;
   onToggleSound?: (on: boolean) => void;
+  onSetTheme?: (id: string) => void;
 }
 
 export interface SettingsState {
@@ -178,17 +179,24 @@ export class PaletteUI {
     this.programOverlayClose = document.createElement('button');
     this.programOverlayClose.className = 'lvl-select-close';
     this.programOverlayClose.textContent = '\u2715';
+    this.programOverlayClose.setAttribute('aria-label', T.closeAllSteps);
     poHead.append(poTitle, this.programOverlayClose);
     this.programOverlayGrid = h('div', 'program-overlay-grid');
     poCard.append(poHead, this.programOverlayGrid);
     this.programOverlay.appendChild(poCard);
 
     const palette = h('div', 'palette');
+    const CMD_LABEL: Record<Command, string> = {
+      forward: T.cmdForward,
+      left: T.cmdLeft,
+      right: T.cmdRight,
+      fan: T.cmdFan,
+    };
     (['forward', 'left', 'right', 'fan'] as Command[]).forEach((cmd) => {
       const b = document.createElement('button');
       b.className = `cmd ${cmd}`;
-      b.innerHTML = `<span>${COMMAND_EMOJI[cmd]}</span><span class="label">${COMMAND_LABEL[cmd]}</span>`;
-      b.setAttribute('aria-label', COMMAND_LABEL[cmd]);
+      b.innerHTML = `<span>${COMMAND_EMOJI[cmd]}</span><span class="label">${CMD_LABEL[cmd]}</span>`;
+      b.setAttribute('aria-label', CMD_LABEL[cmd]);
       b.addEventListener('click', () => this.cb.onAdd(cmd));
       palette.appendChild(b);
       this.cmdButtons.push(b);
@@ -237,6 +245,8 @@ export class PaletteUI {
       this.buildToggle('music', T.music, ''),
       this.buildToggle('sound', T.sound, ''),
     );
+    sBody.appendChild(this.buildLanguageRow());
+    sBody.appendChild(this.buildThemeRow());
     sCard.append(sHeader, sBody);
     this.settingsOverlay.appendChild(sCard);
 
@@ -307,11 +317,56 @@ export class PaletteUI {
     this.toggles[key] = row;
     return row;
   }
+  /** Language picker row — mirrors the toggle pattern. Switching locale reloads
+   * the page: the simplest correct re-render (a live in-place relocalize()
+   * pass is a P2 enhancement, out of scope here). */
+  private buildLanguageRow(): HTMLElement {
+    const row = h('div', 'lang-row');
+    const lab = h('span', 'tog-label');
+    lab.textContent = T.language;
+    const btns = h('div', 'lang-btns');
+    for (const loc of availableLocales()) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'lang-btn' + (loc.code === getLocale() ? ' active' : '');
+      b.textContent = `${loc.flag} ${loc.label}`;
+      b.addEventListener('click', () => {
+        setLocale(loc.code);
+        window.location.reload();
+      });
+      btns.appendChild(b);
+    }
+    row.append(lab, btns);
+    return row;
+  }
+
+  /** Theme picker row — mirrors the language picker. Switching theme reloads
+   * the page (simplest correct re-render, same tradeoff as locale switching). */
+  private buildThemeRow(): HTMLElement {
+    const row = h('div', 'lang-row');
+    const lab = h('span', 'tog-label');
+    lab.textContent = T.theme;
+    const btns = h('div', 'lang-btns');
+    const active = getStoredTheme();
+    for (const th of THEME_REGISTRY) {
+      const key = `theme${th.id.charAt(0).toUpperCase()}${th.id.slice(1)}Name`;
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'lang-btn' + (th.id === active ? ' active' : '');
+      b.textContent = `${th.emoji} ${tr(key)}`;
+      b.addEventListener('click', () => {
+        this.cb.onSetTheme?.(th.id);
+      });
+      btns.appendChild(b);
+    }
+    row.append(lab, btns);
+    return row;
+  }
 
   setLevelInfo(index: number, total: number, name: string) {
     this.levelIndex = index;
     this.levelTotal = total;
-    this.lvlName.textContent = `Level ${index + 1} — ${name}`;
+    this.lvlName.textContent = `${T.levelWord} ${index + 1} — ${name}`;
     this.prevBtn.disabled = index <= 0;
     this.nextBtn.disabled = index + 1 >= total;
     this.overlayBtn.textContent =
@@ -470,8 +525,8 @@ export class PaletteUI {
   private makeChip(cmd: Command, first: number, len: number, big: boolean): HTMLElement {
     const chip = h('div', `chip ${cmd}` + (big ? ' big' : ''));
     let inner = COMMAND_EMOJI[cmd];
-    inner += `<span class="chip-badge">\u00D7${len}</span>`;
-    inner += `<span class="chip-remove">\u2715</span>`;
+    inner += `<span class="chip-badge" aria-hidden="true">\u00D7${len}</span>`;
+    inner += `<span class="chip-remove" aria-label="${T.removeStep}">\u2715</span>`;
     chip.innerHTML = inner;
     chip.dataset.first = String(first);
     chip.dataset.last = String(first + len - 1);
@@ -498,7 +553,7 @@ export class PaletteUI {
       btn.className = 'lvl-pick' + (i === this.levelIndex ? ' current' : '');
       btn.textContent = `${i + 1}`;
       btn.title = this.levelNames[i] ?? '';
-      btn.setAttribute('aria-label', `Level ${i + 1}`);
+      btn.setAttribute('aria-label', `${T.levelWord} ${i + 1}`);
       btn.addEventListener('click', () => {
         this.cb.onSelectLevel?.(i);
         this.closeLevelSelect();
@@ -516,7 +571,7 @@ export class PaletteUI {
         const pick = document.createElement('button');
         pick.className =
           'custom-lvl-pick' + (i === this.levelIndex ? ' current' : '');
-        pick.textContent = `\u2728 ${this.levelNames[i] ?? 'Level'}`;
+      pick.textContent = `\u2728 ${this.levelNames[i] ?? T.levelWord}`;
         pick.addEventListener('click', () => {
           this.cb.onSelectLevel?.(i);
           this.closeLevelSelect();
@@ -524,7 +579,7 @@ export class PaletteUI {
         const del = document.createElement('button');
         del.className = 'custom-lvl-del';
         del.textContent = '\u2715';
-        del.setAttribute('aria-label', 'Verwijder level');
+      del.setAttribute('aria-label', T.deleteCustomLevel);
         del.addEventListener('click', (ev) => {
           ev.stopPropagation();
           const id = this.customIds[i];

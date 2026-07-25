@@ -8,8 +8,8 @@ Inspired by **[Lightbot](https://github.com/haan/Lightbot)**,
 **[GCompris](https://gcompris.net)** (the `programmingMaze` / penguin-to-fish
 activity), **Karel the Robot**, and **turtle graphics**.
 
-> Status: scaffolding. Tech stack under final decision — see
-> [`docs/decisions.md`](docs/decisions.md).
+> Status: **alpha live** at <https://utsmok.github.io/lugame/> — see
+> [`docs/decisions.md`](docs/decisions.md) (ADR-0005) and [`docs/audits/`](docs/audits).
 
 ## Goals
 

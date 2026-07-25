@@ -5,6 +5,8 @@
 // The signature sound is the peacock call on "fan": a double "ah-AAAAH, ah-AAAAH"
 // wail with vibrato + a feather-trill noise burst, approximating a real peacock.
 
+import { type ThemeConfig, assetUrl } from './theme';
+
 export type SfxName =
   | 'step'
   | 'turn'
@@ -15,7 +17,6 @@ export type SfxName =
   | 'click'
   | 'collect';
 
-const BASE = import.meta.env.BASE_URL; // '/lugame/' in prod, '/' in dev
 const SFX_FILE: Record<SfxName, string> = {
   step: 'step.mp3',
   turn: 'turn.mp3',
@@ -90,14 +91,16 @@ export class AudioBus {
   }
 
   /** Best-effort: load any real recordings available under assets/audio/. */
-  async loadOverrides() {
+  async loadOverrides(theme: ThemeConfig) {
     const ctx = this.ensure();
     if (!ctx) return;
     const names = Object.keys(SFX_FILE) as SfxName[];
     await Promise.all(
       names.map(async (n) => {
         try {
-          const res = await fetch(`${BASE}assets/audio/${SFX_FILE[n]}`);
+          // Theme sfx override takes precedence over the default asset path.
+          const rel = theme.sfxOverrides?.[n] ?? `assets/audio/${SFX_FILE[n]}`;
+          const res = await fetch(assetUrl(rel));
           if (!res.ok) return;
           const buf = await res.arrayBuffer();
           const ab = await ctx.decodeAudioData(buf);
@@ -107,9 +110,9 @@ export class AudioBus {
         }
       }),
     )
-    // best-effort: load background-music override
+    // best-effort: load background-music override (theme.bgm)
     try {
-      const res = await fetch(`${BASE}assets/audio/music.mp3`)
+      const res = await fetch(assetUrl(theme.bgm))
       if (res.ok) {
         const buf = await res.arrayBuffer()
         this.musicOverride = await ctx.decodeAudioData(buf)
@@ -165,6 +168,10 @@ export class AudioBus {
         this.blip(t, 660, 0.04, 'sine', 0.16);
         break;
       case 'collect': this.chomp(t); this.chomp(t + 0.14); break;
+      default: {
+        const _: never = n; // F5: exhaustiveness — a new SfxName fails compile here
+        void _;
+      }
     }
   }
 

@@ -4,6 +4,13 @@ import { AudioBus, type SfxName } from './game/audio';
 import { GameEngine } from './game/engine';
 import { LEVELS } from './game/levels';
 import { Renderer } from './game/render';
+import {
+  FALLBACK_FARM_THEME,
+  type ThemeConfig,
+  getStoredTheme,
+  loadTheme,
+  setStoredTheme,
+} from './game/theme';
 import { PaletteUI, type SettingsState } from './ui/palette';
 import { LevelEditor } from './ui/editor';
 import {
@@ -11,7 +18,7 @@ import {
   loadCustomLevels,
   saveCustomLevel,
 } from './storage';
-import { T } from './i18n';
+import { T, getLocale } from './i18n';
 import type { Command, GameEvent, Level } from './game/types';
 
 const EVENT_SFX: Record<GameEvent, SfxName> = {
@@ -57,13 +64,27 @@ class App {
   private engine = new GameEngine(LEVELS[0]);
   private renderer!: Renderer;
   private ui!: PaletteUI;
+  private theme!: ThemeConfig;
   private editor?: LevelEditor;
   private settings: SettingsState = loadSettings();
   private last = performance.now();
 
   constructor() {
+    void this.init();
+  }
+
+  private async init() {
+    try {
+      this.theme = await loadTheme(getStoredTheme());
+    } catch (e) {
+      console.warn('[lugame] theme load failed; using built-in farm fallback.', e);
+      this.theme = FALLBACK_FARM_THEME;
+    }
+
     document.title = T.docTitle;
-    const mount = document.getElementById('app')!;
+    document.documentElement.lang = getLocale();
+    const mount = document.getElementById('app');
+    if (!mount) throw new Error('lugame: mount element #app not found');
     this.engine = new GameEngine(this.levels[0]);
     this.ui = new PaletteUI(mount, {
       onAdd: (c) => this.engine.enqueue(c),
@@ -84,8 +105,9 @@ class App {
       onToggleHoldOnError: (b) => this.setSetting('holdOnError', b),
       onToggleMusic: (b) => this.setSetting('music', b),
       onToggleSound: (b) => this.setSetting('sound', b),
+      onSetTheme: (id) => this.setTheme(id),
     });
-    this.renderer = new Renderer(this.ui.canvas);
+    this.renderer = new Renderer(this.ui.canvas, this.theme);
     this.renderer.loadDecor();
     this.renderer.loadGround();
 
@@ -101,6 +123,12 @@ class App {
     this.bindFirstGesture();
 
     requestAnimationFrame((t) => this.loop(t));
+  }
+
+  /** Persist the theme choice and reload so the new skin takes effect. */
+  private setTheme(id: string) {
+    setStoredTheme(id);
+    window.location.reload();
   }
 
   /** Bind the engine's event bus to audio, gated by the sound setting. */
@@ -231,7 +259,7 @@ class App {
   private bindFirstGesture() {
     const unlock = () => {
       this.audio.resume();
-      void this.audio.loadOverrides();
+      void this.audio.loadOverrides(this.theme);
       if (this.settings.music) this.audio.startMusic();
       window.removeEventListener('pointerdown', unlock);
       window.removeEventListener('keydown', unlock);

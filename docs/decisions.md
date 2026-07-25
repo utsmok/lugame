@@ -172,3 +172,73 @@ All open questions answered; MVP built, verified, and deployed.
 - Browser smoke test: Level 1 win + confetti confirmed; `fan.mp3` decodes
   (1.8 s mono); fan mechanic (scare animal → reach cookie) confirmed manually.
 - Pages Actions run #30151046499: both build + deploy jobs green.
+
+
+---
+
+## ADR-0006 — Theme system (2026-07-25) — ACCEPTED, landed
+
+**Context.** ADR-0005 hard-codes the farm/peacock theme across `render.ts`,
+`types.ts`, `audio.ts`. The code-quality audit (F2, P1) confirms this blocks
+themed variants and independently flags the existing `Tileset` interface
+(`render.ts:16-40`) as the right seam.
+
+**Decision.** Lift tileset/decor/obstacles/goal/bgm/colours into editable
+per-theme JSON at `public/themes/<id>/theme.json`, rendered by a new
+`ConfigTileset(theme)`. **Player + "Shoo!" fan stay global** (preserves
+identity per ADR-0005); only the environment is themed. Text labels live in
+the locale files (ADR-0007), keyed by theme/animal/goal id — theme files carry
+visuals + audio only. Selection via a settings picker; persisted in
+`lugame.theme`. Default farm theme references existing `assets/img/*` paths
+(zero asset migration). Desert is the worked example: real CC0 desert tiles
+(sand/stone/cactus/rock/skull/bush) + emoji animals (🐍🐫🦂🦎) + 🌴 goal shipped;
+desert bgm/sfx stay procedural (no `desert.mp3`/`crunch.mp3` yet — 404→fallback).
+Cross-theme fallback: farm-authored levels stay playable under any theme via
+deterministic animal-kind substitution + a one-time `console.warn` per kind.
+
+**Spec:** [`docs/theming-design.md`](theming-design.md). **Sequenced after l10n.**
+
+---
+
+## ADR-0007 — Localization / l10n (2026-07-25) — ACCEPTED, in flight
+
+**Context.** Only `src/i18n.ts` exists (flat Dutch `T`), and it is incomplete —
+`src/ui/editor.ts` hardcodes its own Dutch strings and never imports `T`
+(code-quality F4, ui-ux E-2). `COMMAND_LABEL` lives in `types.ts`, mixing
+presentation with data.
+
+**Decision.** `src/locales/{nl,en,types}.ts` + a rewritten `src/i18n.ts` runtime:
+`T` becomes a **Proxy** over the current locale's dict so runtime switching works
+with **zero call-site churn**; `getLocale`/`setLocale` (persisted in
+`lugame.locale`, `navigator.language` detection); a language picker in settings;
+`document.documentElement.lang` set on load. Every user-visible string —
+including all of `editor.ts` and `COMMAND_LABEL` moved out of `types.ts` — flows
+through `T`. English (`en`) is the first new locale. `satisfies Record<string,
+Translation>` makes missing EN keys a compile error.
+
+**Spec:** [`docs/l10n-design.md`](l10n-design.md). **Sequenced before theming**
+(theme labels live here).
+
+---
+
+## ADR-0008 — Audit-driven quality plan (2026-07-25) — ACCEPTED
+
+**Context.** Three parallel audits (code-quality, gameplay, ui-ux) produced
+~67 findings; two converged across all three. Heuristic score 72/100.
+
+**Decision — adopt the prioritized roadmap** ([`docs/roadmap.md`](roadmap.md)):
+- **P0 before next release:** honour `prefers-reduced-motion` (canvas + CSS +
+  confetti); fix WCAG-AA contrast on Run/Clear + command labels (icon-dominant
+  preferred for the pre-literate audience).
+- **Now (alpha polish):** chip-remove touch fix, ≥44px secondary targets,
+  exhaustiveness `never`-checks, kill per-frame `pathSet` rebuild, overlays →
+  real dialogs, delete-confirm, tsconfig flags (`noUncheckedIndexedAccess` first).
+- **Next (beta):** promote the throwaway BFS solver to `src/game/solve.ts`
+  (powers hint + editor solvability + par), no-reading onboarding demo,
+  `Repeat ×N` tile, level unlocking + feather collection, ESLint+Prettier+
+  Vitest + CI, split `render.ts`.
+- **Later (v1):** pond + hay-bale obstacles, win-juice, engine view-model,
+  editor model/view split, real desert theme assets.
+
+**Audits:** [`docs/audits/`](audits/). Strengths preserved: strict TS, zero
+`any`, exemplar defensive error handling, cached `ui.sync` (not a perf issue).

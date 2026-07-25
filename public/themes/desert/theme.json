@@ -1,0 +1,33 @@
+{
+  "id": "desert",
+  "background": {
+    "stops": [
+      { "offset": 0, "color": "#fbe6b6" },
+      { "offset": 0.5, "color": "#f3cf85" },
+      { "offset": 1, "color": "#e0a95e" }
+    ]
+  },
+  "cell": { "pathFill": "#b08a52", "grassFill": "#e7c486" },
+  "ground": {
+    "grass": "themes/desert/img/tile_sand.png",
+    "dirt": "themes/desert/img/tile_stone.png"
+  },
+  "decor": [
+    { "file": "themes/desert/img/cactus.png", "h": 0.95 },
+    { "file": "themes/desert/img/cactus_tall.png", "h": 0.8 },
+    { "file": "themes/desert/img/bush.png", "h": 0.62 },
+    { "file": "themes/desert/img/rock.png", "h": 0.55 },
+    { "file": "themes/desert/img/skull.png", "h": 0.4 },
+    { "file": "themes/desert/img/tile_sand2.png", "h": 0.3 }
+  ],
+  "goalEmoji": "🌴",
+  "fanColors": ["#ffd34e", "#ff9f43", "#ff6b6b", "#ffd34e", "#c98a3a"],
+  "bgm": "themes/desert/audio/desert.mp3",
+  "sfxOverrides": { "collect": "themes/desert/audio/crunch.mp3" },
+  "animals": [
+    { "id": "snake", "emoji": "🐍" },
+    { "id": "dromedary", "emoji": "🐫" },
+    { "id": "scorpion", "emoji": "🦂" },
+    { "id": "lizard", "emoji": "🦎" }
+  ]
+}

@@ -1,5 +1,16 @@
 import type { GameEngine } from './engine';
-import { EMOJI, key } from './types';
+import { type ThemeConfig, assetUrl, makeEmojiResolver } from './theme';
+
+// P0-1: prefers-reduced-motion. Read once at module load + a change listener so
+// toggling the OS/browser setting applies live without a reload.
+const REDUCED_MQ: MediaQueryList | null =
+  typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+    ? window.matchMedia('(prefers-reduced-motion: reduce)')
+    : null;
+let REDUCED = REDUCED_MQ?.matches ?? false;
+REDUCED_MQ?.addEventListener('change', (ev) => {
+  REDUCED = ev.matches;
+});
 
 // ─── Tileset interface ──────────────────────────────────────────────
 
@@ -60,28 +71,55 @@ function cellSeed(c: number, r: number): number {
   return h >>> 0;
 }
 
-// ─── FarmTileset ────────────────────────────────────────────────────
+// ─── ConfigTileset (theme-driven; supersedes the hard-coded FarmTileset) ───
 
-class FarmTileset implements Tileset {
+/** Parse a #rrggbb hex string into [r,g,b] (0..255). Returns black on bad input. */
+function parseHex(hex: string): [number, number, number] {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return [0, 0, 0];
+  const n = parseInt(m[1], 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+/** Linear-mix two [r,g,b] triples by t (0..1). */
+function mixRgb(
+  a: [number, number, number],
+  b: [number, number, number],
+  t: number,
+): [number, number, number] {
+  return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+}
+
+class ConfigTileset implements Tileset {
   decorImages?: DecorImg[];
   ground?: GroundTiles;
+  constructor(private theme: ThemeConfig) {}
+
   drawBackground(ctx: CanvasRenderingContext2D, W: number, H: number) {
-    // Base grass gradient — warm, inviting greens
+    const stops = this.theme.background.stops;
     const bg = ctx.createLinearGradient(0, 0, 0, H);
-    bg.addColorStop(0, '#a8e6a3');
-    bg.addColorStop(0.5, '#88d48f');
-    bg.addColorStop(1, '#6bc269');
+    for (const s of stops) bg.addColorStop(s.offset, s.color);
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, W, H);
 
-    // Subtle grass-tuft texture via scattered soft dots
+    // Subtle scattered tufts/dots for texture — colours derived from the
+    // gradient endpoints so they always fit the theme (farm greens, desert sands).
+    const top: [number, number, number] = stops.length
+      ? parseHex(stops[0].color)
+      : [120, 180, 120];
+    const bot: [number, number, number] = stops.length
+      ? parseHex(stops[stops.length - 1].color)
+      : top;
+    const dark = mixRgb(top, [0, 0, 0], 0.35);
+    const light = mixRgb(bot, [255, 255, 255], 0.08);
     ctx.save();
     ctx.globalAlpha = 0.18;
     const rng = mulberry32(42);
     for (let i = 0; i < 180; i++) {
       const tx = rng() * W;
       const ty = rng() * H;
-      ctx.fillStyle = i % 3 === 0 ? '#55a84b' : '#72c468';
+      const [r, g, b] = i % 3 === 0 ? dark : light;
+      ctx.fillStyle = `rgb(${r | 0},${g | 0},${b | 0})`;
       ctx.beginPath();
       ctx.arc(tx, ty, 1.2 + rng() * 2.2, 0, Math.PI * 2);
       ctx.fill();
@@ -156,7 +194,7 @@ class FarmTileset implements Tileset {
     const sy = y + pad;
     const ss = size - pad * 2;
 
-    // Warm dirt/stone tile body
+    // Warm tile body — base colour from the theme, with per-tile variation
     ctx.save();
     ctx.beginPath();
     ctx.moveTo(sx + rad, sy);
@@ -166,12 +204,11 @@ class FarmTileset implements Tileset {
     ctx.arcTo(sx, sy, sx + ss, sy, rad);
     ctx.closePath();
 
-    // Subtle colour variation per tile
     const rng = mulberry32(seed);
-    const base = rng() > 0.5 ? 0xd4a85c : 0xc99a50;
-    const r = ((base >> 16) & 255) + (rng() * 12 - 6);
-    const g = ((base >> 8) & 255) + (rng() * 12 - 6);
-    const b = (base & 255) + (rng() * 10 - 5);
+    const [br, bg, bb] = parseHex(this.theme.cell.pathFill);
+    const r = br + (rng() > 0.5 ? 10 : -10) + (rng() * 12 - 6);
+    const g = bg + (rng() * 12 - 6);
+    const b = bb + (rng() * 10 - 5);
     ctx.fillStyle = `rgb(${r | 0},${g | 0},${b | 0})`;
     ctx.fill();
 
@@ -184,7 +221,8 @@ class FarmTileset implements Tileset {
     ctx.fillStyle = hl;
     ctx.fillRect(sx, sy, ss, ss);
 
-    // Edge grass tufts / pebbles
+    // Edge grass tufts / pebbles — tufts themed to the cell's grass colour
+    const [gr, gg, gb] = parseHex(this.theme.cell.grassFill);
     ctx.globalAlpha = 0.35;
     for (let i = 0; i < 5; i++) {
       const edge = Math.floor(rng() * 4); // 0=top 1=right 2=bottom 3=left
@@ -196,8 +234,8 @@ class FarmTileset implements Tileset {
       else { ex = sx + margin * 0.4; ey = sy + margin + rng() * (ss - margin * 2); }
 
       if (rng() > 0.45) {
-        // tiny grass tuft
-        ctx.fillStyle = '#6ab062';
+        // tiny grass tuft (slightly darker than the cell grass)
+        ctx.fillStyle = `rgb(${(gr * 0.8) | 0},${(gg * 0.8) | 0},${(gb * 0.8) | 0})`;
         ctx.beginPath();
         ctx.arc(ex, ey, 1.5 + rng() * 2.5, 0, Math.PI * 2);
         ctx.fill();
@@ -324,50 +362,53 @@ const CONFETTI = [
 const FAN_DOTS = 14;
 const FAN_COLORS = ['#1bbf9e', '#2e6bff', '#ffd34e', '#1bbf9e', '#b06bff'];
 
-const DECOR_BASE = import.meta.env.BASE_URL;
-// Real CC0 decor sprites (ansimuz "Trees & Bushes"). h = display height / cell.
-const DECOR_SPEC: { file: string; h: number }[] = [
-  { file: 'tree.png', h: 1.0 },
-  { file: 'tree2.png', h: 1.05 },
-  { file: 'pine.png', h: 0.78 },
-  { file: 'bush.png', h: 0.62 },
-  { file: 'flowers.png', h: 0.34 },
-  { file: 'flowers2.png', h: 0.3 },
-  { file: 'grass.png', h: 0.3 },
-];
+// CONFETTI + FAN_COLORS are the default palettes; a theme may override them
+// (theme.confetti / theme.fanColors) via the Renderer constructor.
 
 // ─── Renderer ───────────────────────────────────────────────────────
 
 export class Renderer {
   private ctx: CanvasRenderingContext2D;
   private confetti: Particle[] = [];
+  private confettiColors: readonly string[] = CONFETTI;
   private prevPhase: string | null = null;
   private prevTime = 0;
   private prevCollected: boolean[] = []; // tracks last-frame collected state
   private sparkles: Map<number, Sparkle> = new Map(); // goal-index → active sparkle
 
+  private goalEmoji: string;
+  private fanColors: readonly string[];
+  private emojiFor: (kind: string) => string;
+  private theme: ThemeConfig;
+
   tileset: Tileset;
 
-  constructor(private canvas: HTMLCanvasElement, tileset?: Tileset) {
+  constructor(private canvas: HTMLCanvasElement, theme: ThemeConfig) {
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('2D canvas context unavailable');
     this.ctx = ctx;
-    this.tileset = tileset ?? new FarmTileset();
+    this.theme = theme;
+    this.tileset = new ConfigTileset(theme);
+    this.goalEmoji = theme.goalEmoji;
+    this.fanColors = theme.fanColors ?? FAN_COLORS;
+    this.confettiColors = theme.confetti ?? CONFETTI;
+    this.emojiFor = makeEmojiResolver(theme);
   }
 
   /** Best-effort load of real decor sprites; swaps them into the tileset when ready. */
   loadDecor() {
+    const specs = this.theme.decor;
     const loaded: DecorImg[] = [];
     let settled = 0;
-    for (const spec of DECOR_SPEC) {
+    for (const spec of specs) {
       const img = new Image();
-      img.src = `${DECOR_BASE}assets/img/${spec.file}`;
+      img.src = assetUrl(spec.file);
       img.onload = () => {
         loaded.push({ img, h: spec.h });
-        if (++settled === DECOR_SPEC.length) this.tileset.decorImages = loaded;
+        if (++settled === specs.length) this.tileset.decorImages = loaded;
       };
       img.onerror = () => {
-        if (++settled === DECOR_SPEC.length && loaded.length) {
+        if (++settled === specs.length && loaded.length) {
           this.tileset.decorImages = loaded;
         }
       };
@@ -376,6 +417,8 @@ export class Renderer {
 
   /** Best-effort load of real ground tiles (grass + dirt); swaps into the tileset. */
   loadGround() {
+    const g = this.theme.ground;
+    if (!g) return; // no themed ground → procedural cell colours stay in place
     const grass = new Image();
     const dirt = new Image();
     let done = 0;
@@ -386,8 +429,8 @@ export class Renderer {
     };
     grass.onload = finish;
     dirt.onload = finish;
-    grass.src = `${DECOR_BASE}assets/img/tile_grass.png`;
-    dirt.src = `${DECOR_BASE}assets/img/tile_dirt.png`;
+    grass.src = assetUrl(g.grass);
+    dirt.src = assetUrl(g.dirt);
   }
 
   draw(e: GameEngine, now: number) {
@@ -407,7 +450,7 @@ export class Renderer {
     const cy = (r: number) => oy + r * cell + cell / 2;
 
     // Build path-set for fast lookup
-    const pathSet = new Set(L.path.map(key));
+    const pathSet = e.pathSet; // F7: reuse engine's set — was new Set(L.path.map(key)) every frame
 
     const g = this.tileset.ground;
     const haveGround =
@@ -538,7 +581,7 @@ export class Renderer {
     // Detect newly-collected goals (transition false→true)
     for (let i = 0; i < goals.length; i++) {
       const was = this.prevCollected[i] ?? false;
-      if (!was && collected[i]) {
+      if (!was && collected[i] && !REDUCED) { // P0-1: skip collection sparkle under reduced-motion
         // Just collected — spawn sparkle
         this.sparkles.set(i, {
           x: cx(goals[i].c),
@@ -576,7 +619,7 @@ export class Renderer {
       ctx.beginPath();
       ctx.arc(x, y, cell * 0.58, 0, Math.PI * 2);
       ctx.fill();
-      this.emoji(ctx, '🍪', x, y, cell * 0.56 * pulse);
+      this.emoji(ctx, this.goalEmoji, x, y, cell * 0.56 * pulse);
       ctx.restore();
     }
 
@@ -682,7 +725,7 @@ export class Renderer {
       }
       ctx.save();
       ctx.globalAlpha = Math.max(0, alpha);
-      this.emoji(ctx, EMOJI[a.kind], x, y, cell * 0.62 * scale);
+      this.emoji(ctx, this.emojiFor(a.kind), x, y, cell * 0.62 * scale);
       ctx.restore();
     }
   }
@@ -714,7 +757,7 @@ export class Renderer {
         const ang = (i / FAN_DOTS) * Math.PI * 2 + now * 0.6;
         const dx = x + Math.cos(ang) * radius;
         const dy = y + Math.sin(ang) * radius;
-        ctx.fillStyle = FAN_COLORS[i % FAN_COLORS.length];
+        ctx.fillStyle = this.fanColors[i % this.fanColors.length];
         ctx.beginPath();
         ctx.arc(dx, dy, cell * 0.1 * (0.6 + e.fanT * 0.6), 0, Math.PI * 2);
         ctx.fill();
@@ -727,7 +770,7 @@ export class Renderer {
     }
 
     // ── Bump nudge (world-space offset) ──
-    if (e.bumpShake > 0) {
+    if (e.bumpShake > 0 && !REDUCED) { // P0-1: zero bump shake under reduced-motion
       const k = Math.sin(now * 55) * cell * 0.055 * e.bumpShake;
       const dv = dirVecNum(e.bumpDir);
       x += dv.x * k;
@@ -748,16 +791,17 @@ export class Renderer {
 
     if (phase === 'running') {
       // Walk bounce — buoyant hop
-      const hop = Math.abs(Math.sin(now * 7.5));
+      const hopMul = REDUCED ? 0 : 1; // P0-1: zero peacock hop amplitude under reduced-motion
+      const hop = Math.abs(Math.sin(now * 7.5)) * hopMul;
       y -= hop * cell * 0.05;
       // Squash/stretch
       scaleY *= 1 - hop * 0.06;
       scaleX *= 1 + hop * 0.04;
       // Rotational wobble
-      rot += Math.sin(now * 9) * 0.05;
+      rot += Math.sin(now * 9) * 0.05 * hopMul;
 
       // Trailing sparkles — low prob each frame, spawn into sparkle map
-      if (Math.random() < 0.04) {
+      if (!REDUCED && Math.random() < 0.04) { // P0-1: skip trailing sparkle spawn
         const dirRad = (r.ddir * Math.PI) / 180;
         // Behind the peacock (opposite facing)
         const sx = x - Math.sin(dirRad) * cell * 0.3;
@@ -778,11 +822,13 @@ export class Renderer {
       const fanScale = 1 + e.fanT * 0.18;
       scaleX *= fanScale;
       scaleY *= fanScale;
-      rot += Math.sin(now * 30) * 0.12 * e.fanT;
-      // Existing fan shake (world-space high-freq jitter)
-      const amp = cell * 0.035 * e.fanT;
-      x += Math.sin(now * 50) * amp;
-      y += Math.cos(now * 47) * amp;
+      rot += (REDUCED ? 0 : 1) * Math.sin(now * 30) * 0.12 * e.fanT; // P0-1: zero fan spin-wobble
+      // Fan shake (world-space high-freq jitter) — zeroed under reduced-motion
+      if (!REDUCED) {
+        const amp = cell * 0.035 * e.fanT;
+        x += Math.sin(now * 50) * amp;
+        y += Math.cos(now * 47) * amp;
+      }
     }
 
     if (phase === 'won') {
@@ -882,6 +928,7 @@ export class Renderer {
 
 
   private spawnConfetti(W: number, H: number) {
+    if (REDUCED) return; // P0-1: skip confetti spawn under reduced-motion
     this.confetti = [];
     for (let i = 0; i < 70; i++) {
       this.confetti.push({
@@ -892,7 +939,7 @@ export class Renderer {
         size: 6 + Math.random() * 8,
         rot: Math.random() * Math.PI,
         vr: (Math.random() - 0.5) * 10,
-        color: CONFETTI[i % CONFETTI.length],
+        color: this.confettiColors[i % this.confettiColors.length],
         life: 1,
       });
     }

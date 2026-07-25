@@ -15,10 +15,14 @@ function isDir(v: unknown): v is Dir {
   return v === 0 || v === 90 || v === 180 || v === 270;
 }
 
+// Structural-only: any non-empty string is a valid kind id. The active theme
+// decides whether it has an emoji for it (cross-theme fallback in theme.ts),
+// so a farm level stored under the farm theme still loads under the desert theme.
 function isAnimalKind(v: unknown): v is AnimalKind {
-  return v === 'cow' || v === 'pig' || v === 'sheep' || v === 'chicken';
+  return typeof v === 'string' && v.length > 0;
 }
 
+/** Structural check: an animal spawn is `{ pos, kind }` with a valid pos + non-empty kind id. */
 function isValidAnimalSpawn(v: unknown): boolean {
   if (typeof v !== 'object' || v === null) return false;
   if (!('pos' in v) || !isPos(v.pos)) return false;
