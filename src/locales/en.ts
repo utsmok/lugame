@@ -120,4 +120,6 @@ export const en: Translation = {
   edErrGoalOnPath: 'Cookies must be on path tiles.',
   edErrAnimalOnPath: 'Animals must be on path tiles.',
   edErrStartGoal: 'Start and cookie cannot share a tile.',
+  edSolvable: 'Solvable — {n} steps',
+  edUnsolvable: 'No solution',
 };

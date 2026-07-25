@@ -118,4 +118,6 @@ export const nl = {
   edErrGoalOnPath: 'Koekjes moeten op het pad staan.',
   edErrAnimalOnPath: 'Dieren moeten op het pad staan.',
   edErrStartGoal: 'Start en koekje mogen niet op dezelfde plaats.',
+  edSolvable: 'Oplosbaar — {n} stappen',
+  edUnsolvable: 'Geen oplossing',
 };

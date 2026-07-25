@@ -4,6 +4,7 @@
 import type { Level, Pos, Dir, AnimalKind } from '../game/types';
 import { nextCustomId } from '../storage';
 import { T } from '../i18n';
+import { solve } from '../game/solve';
 
 /* ------------------------------------------------------------------ */
 /*  Styles (injected once)                                             */
@@ -207,6 +208,14 @@ const CSS = `
   text-align: center;
   min-height: 1.2em;
 }
+.lugame-editor .ed-solvable {
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: center;
+  min-height: 1.2em;
+}
+.lugame-editor .ed-solvable.ok { color: var(--good); }
+.lugame-editor .ed-solvable.bad { color: var(--bad); }
 /* ── Grid area ───────────────────────────── */
 .lugame-editor .ed-grid-area {
   flex: 1;
@@ -321,6 +330,7 @@ export class LevelEditor {
   private colsVal!: HTMLSpanElement;
   private rowsVal!: HTMLSpanElement;
   private errorEl!: HTMLElement;
+  private solvableEl!: HTMLElement;
   private copyFeedback!: HTMLElement;
 
   private cols = 5;
@@ -460,6 +470,7 @@ export class LevelEditor {
       this.energySelect.appendChild(o);
     }
     side.appendChild(this.energySelect);
+    this.energySelect.addEventListener('change', () => this.updateSolvable());
 
     // Error + copy feedback
     this.errorEl = document.createElement('div');
@@ -469,6 +480,9 @@ export class LevelEditor {
     this.copyFeedback = document.createElement('div');
     this.copyFeedback.className = 'ed-copy-feedback';
     side.appendChild(this.copyFeedback);
+    this.solvableEl = document.createElement('div');
+    this.solvableEl.className = 'ed-solvable';
+    side.appendChild(this.solvableEl);
 
     // Actions
     const actions = document.createElement('div');
@@ -564,6 +578,7 @@ export class LevelEditor {
     this.root.querySelectorAll('.ed-dir-btn').forEach((b, i) =>
       b.classList.toggle('active', DIRS[i] === d),
     );
+    this.updateSolvable();
   }
 
   private resizeCols(v: number): void {
@@ -637,6 +652,30 @@ export class LevelEditor {
     }
 
     this.gridEl.addEventListener('pointerup', () => { this.painting = false; }, { once: true });
+
+    this.updateSolvable();
+  }
+
+  /** Live solvability + optimal-step (par) indicator, re-run on every edit
+   *  via renderGrid. Uses the pure BFS solver (B1). */
+  private updateSolvable(): void {
+    if (this.validate()) {
+      this.solvableEl.textContent = '';
+      this.solvableEl.className = 'ed-solvable';
+      return;
+    }
+    try {
+      const sol = solve(this.buildLevel(0));
+      if (sol) {
+        this.solvableEl.className = 'ed-solvable ok';
+        this.solvableEl.textContent = T.edSolvable.replace('{n}', String(sol.length));
+      } else {
+        this.solvableEl.className = 'ed-solvable bad';
+        this.solvableEl.textContent = T.edUnsolvable;
+      }
+    } catch {
+      this.solvableEl.textContent = '';
+    }
   }
 
   private calcCellSize(): number {
