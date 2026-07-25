@@ -15,7 +15,9 @@ import { PaletteUI, type SettingsState } from './ui/palette';
 import { LevelEditor } from './ui/editor';
 import {
   deleteCustomLevel,
+  getClearedLevels,
   loadCustomLevels,
+  markCleared,
   saveCustomLevel,
 } from './storage';
 import { T, getLocale, tr } from './i18n';
@@ -49,13 +51,14 @@ function loadSettings(): SettingsState {
           holdOnError: !!o.holdOnError,
           music: o.music !== false,
           sound: o.sound !== false,
+          freePlay: !!o.freePlay,
         };
       }
     }
   } catch {
     /* ignore corrupt settings */
   }
-  return { easy: false, holdOnError: false, music: true, sound: true };
+  return { easy: false, holdOnError: false, music: true, sound: true, freePlay: false };
 }
 
 class App {
@@ -68,6 +71,8 @@ class App {
   private theme!: ThemeConfig;
   private editor?: LevelEditor;
   private settings: SettingsState = loadSettings();
+  /** Cleared built-in level ids (drives unlocking + feather count). */
+  private cleared = new Set<number>(getClearedLevels());
   private last = performance.now();
 
   constructor() {
@@ -111,12 +116,14 @@ class App {
       onToggleHoldOnError: (b) => this.setSetting('holdOnError', b),
       onToggleMusic: (b) => this.setSetting('music', b),
       onToggleSound: (b) => this.setSetting('sound', b),
+      onToggleFreePlay: (b) => this.setSetting('freePlay', b),
       onSetTheme: (id) => this.setTheme(id),
     });
     this.renderer = new Renderer(this.ui.canvas, this.theme);
     this.renderer.loadDecor();
     this.renderer.loadGround();
     this.renderer.loadPlayer();
+    this.applyProgress();
 
     this.applySettings();
 
@@ -146,6 +153,7 @@ class App {
   private wireAudio() {
     this.engine.onEvent = (e) => {
       if (this.settings.sound) this.audio.play(EVENT_SFX[e]);
+      if (e === 'win') this.onWin();
     };
   }
 
@@ -158,6 +166,25 @@ class App {
     this.wireAudio();
   }
 
+  /** Mark the current built-in level cleared on win (feathers + unlocking). */
+  private onWin() {
+    const lvl = this.engine.level;
+    if (LEVELS.includes(lvl) && !this.cleared.has(lvl.id)) {
+      this.cleared.add(lvl.id);
+      markCleared(lvl.id);
+      this.applyProgress();
+    }
+  }
+
+  /** Recompute level-unlock flags + feather count and push to the UI. */
+  private applyProgress() {
+    const n = LEVELS.length;
+    const unlocked = Array.from({ length: n }, (_, i) =>
+      i === 0 || this.settings.freePlay || (i > 0 && this.cleared.has(LEVELS[i - 1]!.id)),
+    );
+    this.ui.setProgress(unlocked, this.cleared.size, n);
+  }
+
   private setSetting<K extends keyof SettingsState>(
     key: K,
     value: SettingsState[K],
@@ -167,6 +194,7 @@ class App {
     else if (key === 'holdOnError') this.engine.holdOnError = value;
     else if (key === 'music') this.audio.setMusicEnabled(value);
     else if (key === 'sound') this.audio.setMuted(!value);
+    else if (key === 'freePlay') this.applyProgress();
     try {
       localStorage.setItem(SETTINGS_KEY, JSON.stringify(this.settings));
     } catch {

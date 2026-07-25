@@ -51,6 +51,10 @@ export const en: Translation = {
   holdOnErrorHint: 'Keep the peacock on the wrong step until you restart.',
   music: 'Music',
   sound: 'Sound',
+  freePlay: 'Free play',
+  freePlayHint: 'Unlock every level.',
+  locked: 'Locked',
+  feathers: 'Feathers',
   language: 'Language',
 
   // themes (settings row + theme names + goal/animal labels per docs/theming-design.md)

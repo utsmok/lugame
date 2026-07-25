@@ -89,3 +89,30 @@ export function nextCustomId(): number {
   }
   return max + 1;
 }
+
+const CLEARED_KEY = 'lugame.cleared';
+
+/** Ids of cleared built-in levels (feathers = plumage total). [] on any error. */
+export function getClearedLevels(): number[] {
+  try {
+    const raw = localStorage.getItem(CLEARED_KEY);
+    if (!raw) return [];
+    const p = JSON.parse(raw) as unknown;
+    return Array.isArray(p) ? p.filter((x): x is number => typeof x === 'number') : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Record a cleared level id (idempotent). */
+export function markCleared(id: number): void {
+  try {
+    const ids = getClearedLevels();
+    if (!ids.includes(id)) {
+      ids.push(id);
+      localStorage.setItem(CLEARED_KEY, JSON.stringify(ids));
+    }
+  } catch {
+    /* storage may be unavailable */
+  }
+}

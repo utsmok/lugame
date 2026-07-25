@@ -49,6 +49,10 @@ export const nl = {
   holdOnErrorHint: 'Pauzeer bij een foute stap zodat je kan zien wat er mis is.',
   music: 'Muziek',
   sound: 'Geluid',
+  freePlay: 'Vrij spelen',
+  freePlayHint: 'Zet alle levels open.',
+  locked: 'Op slot',
+  feathers: 'Veren',
   language: 'Taal',
 
   // themes (settings row + theme names + goal/animal labels per docs/theming-design.md)

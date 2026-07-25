@@ -27,6 +27,7 @@ export interface PaletteCallbacks {
   onToggleHoldOnError?: (hold: boolean) => void;
   onToggleMusic?: (on: boolean) => void;
   onToggleSound?: (on: boolean) => void;
+  onToggleFreePlay?: (on: boolean) => void;
   onSetTheme?: (id: string) => void;
 }
 
@@ -35,6 +36,7 @@ export interface SettingsState {
   holdOnError: boolean;
   music: boolean;
   sound: boolean;
+  freePlay: boolean;
 }
 
 interface Built {
@@ -42,7 +44,7 @@ interface Built {
   canvas: HTMLCanvasElement;
 }
 
-type ToggleKey = 'easy' | 'hold' | 'music' | 'sound';
+type ToggleKey = 'easy' | 'hold' | 'music' | 'sound' | 'freeplay';
 
 function h(tag: string, cls: string): HTMLElement {
   const el = document.createElement(tag);
@@ -151,6 +153,7 @@ export class PaletteUI {
   private overlay!: HTMLElement;
   private overlayBtn!: HTMLButtonElement;
   private lvlName!: HTMLElement;
+  private featherEl!: HTMLElement;
   private cachedProgram = '';
   private levelIndex = 0;
   private levelTotal = 1;
@@ -160,6 +163,7 @@ export class PaletteUI {
   private levelNames: string[] = [];
   private customStart = 0; // combined-list index where custom levels begin
   private customIds: number[] = [];
+  private unlocked: boolean[] = [];
   private levelSelectBtn!: HTMLButtonElement;
   private levelSelectOverlay!: HTMLElement;
   private levelSelectGrid!: HTMLElement;
@@ -174,6 +178,7 @@ export class PaletteUI {
     hold: undefined as unknown as HTMLElement,
     music: undefined as unknown as HTMLElement,
     sound: undefined as unknown as HTMLElement,
+    freeplay: undefined as unknown as HTMLElement,
   };
 
   constructor(mount: HTMLElement, private cb: PaletteCallbacks) {
@@ -211,6 +216,7 @@ export class PaletteUI {
     this.prevBtn.textContent = '\u2039';
     this.prevBtn.setAttribute('aria-label', T.prevLevel);
     this.lvlName = h('span', 'lvl-name');
+    this.featherEl = h('span', 'feathers');
     this.nextBtn = document.createElement('button');
     this.nextBtn.className = 'lvl-btn next';
     this.nextBtn.textContent = '\u203A';
@@ -218,6 +224,7 @@ export class PaletteUI {
 
     topbar.append(
       title,
+      this.featherEl,
       spacer,
       this.levelSelectBtn,
       this.editorBtn,
@@ -352,6 +359,7 @@ export class PaletteUI {
       this.buildToggle('hold', T.holdOnError, T.holdOnErrorHint),
       this.buildToggle('music', T.music, ''),
       this.buildToggle('sound', T.sound, ''),
+      this.buildToggle('freeplay', T.freePlay, T.freePlayHint),
     );
     sBody.appendChild(this.buildLanguageRow());
     sBody.appendChild(this.buildThemeRow());
@@ -418,7 +426,8 @@ export class PaletteUI {
       if (key === 'easy') this.cb.onToggleEasy?.(next);
       else if (key === 'hold') this.cb.onToggleHoldOnError?.(next);
       else if (key === 'music') this.cb.onToggleMusic?.(next);
-      else this.cb.onToggleSound?.(next);
+      else if (key === 'sound') this.cb.onToggleSound?.(next);
+      else this.cb.onToggleFreePlay?.(next);
     });
     this.toggles[key] = row;
     return row;
@@ -488,12 +497,21 @@ export class PaletteUI {
     this.rebuildLevelGrid();
   }
 
+  /** Push level-unlock flags + feather (plumage) count; rebuilds the picker. */
+  setProgress(unlocked: boolean[], feathers: number, total: number) {
+    this.unlocked = unlocked;
+    this.featherEl.textContent = `🪶 ${feathers}/${total}`;
+    this.featherEl.setAttribute('aria-label', `${T.feathers}: ${feathers} / ${total}`);
+    this.rebuildLevelGrid();
+  }
+
   setSettings(s: SettingsState) {
     const map: Record<ToggleKey, boolean> = {
       easy: s.easy,
       hold: s.holdOnError,
       music: s.music,
       sound: s.sound,
+      freeplay: s.freePlay,
     };
     (Object.keys(map) as ToggleKey[]).forEach((k) => {
       const row = this.toggles[k];
@@ -690,14 +708,22 @@ export class PaletteUI {
     const builtCount = Math.min(this.customStart, this.levelNames.length);
     for (let i = 0; i < builtCount; i++) {
       const btn = document.createElement('button');
-      btn.className = 'lvl-pick' + (i === this.levelIndex ? ' current' : '');
-      btn.textContent = `${i + 1}`;
+      const locked = !this.unlocked[i];
+      btn.className =
+        'lvl-pick' + (i === this.levelIndex ? ' current' : '') + (locked ? ' locked' : '');
+      btn.textContent = locked ? '🔒' : `${i + 1}`;
       btn.title = this.levelNames[i] ?? '';
-      btn.setAttribute('aria-label', `${T.levelWord} ${i + 1}`);
-      btn.addEventListener('click', () => {
-        this.cb.onSelectLevel?.(i);
-        this.closeLevelSelect();
-      });
+      btn.disabled = locked;
+      btn.setAttribute(
+        'aria-label',
+        `${T.levelWord} ${i + 1}` + (locked ? ` (${T.locked})` : ''),
+      );
+      if (!locked) {
+        btn.addEventListener('click', () => {
+          this.cb.onSelectLevel?.(i);
+          this.closeLevelSelect();
+        });
+      }
       this.levelSelectGrid.appendChild(btn);
     }
 
