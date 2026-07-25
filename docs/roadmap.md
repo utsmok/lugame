@@ -52,14 +52,14 @@ Both were flagged by multiple audits independently; both landed in the a11y fix 
 | # | Item | Audit | Files | Effort |
 |---|---|---|---|---|
 | B1 | ✅ **`src/game/solve.ts`** — pure BFS `solve(level)`; validated on all 12 levels (solve-len == doc-len + real-engine replay-win). DONE `c48137d` | gameplay C | src/game/solve.ts | M |
-| B2 | 🟡 editor **solvability + par** DONE (`e6fba9d`); in-game **💡 hint** + **par display** still TODO | gameplay C | palette.ts, editor.ts, render.ts | M |
-| B3 | **No-reading onboarding demo** (translucent 👆 auto-taps + auto-runs; per-mechanic localStorage flag; replayable from settings) | gameplay B/G1 | palette.ts, main.ts | M/L |
-| B4 | **`Repeat ×N` tile** (two fixed tiles ×2/×3 — age-appropriate loop; no counter) | gameplay A | types.ts, engine.ts, palette.ts, levels.ts | M |
-| B5 | **Level unlocking + feather 🪶 collection** (padlock until cleared; feathers = plumage total; parent free-play toggle) | gameplay D/G5 | storage.ts, palette.ts | M |
-| B6 | Chip **shapes** (colour-blind safety) + step **speed control** | gameplay E | render.ts, palette.ts, settings | S/M |
-| B7 | **Too-tired cue** (distinct sound when fan fires at 0 energy) + **single-step debug** | gameplay H/G9 | audio.ts, engine.ts, main.ts | S |
-| B8 | **Tooling:** ESLint (flat) + Prettier + Vitest harness + `ci.yml` lint/test/typecheck job | code-quality §6 | new config + .github/ | M |
-| B9 | **Split `render.ts`** → `tileset.ts` + `particles.ts` + `render.ts` (makes theme seam a file boundary) | code-quality F13 | render.ts | M |
+| B2 | ✅ editor solvability+par DONE (`e6fba9d`); in-game 💡 hint + par display DONE (`9fa9527`) — `solveFrom` solves from the current program state and pulses the next optimal command | gameplay C | palette.ts, main.ts, solve.ts, engine.ts | M |
+| B3 | ✅ **No-reading onboarding demo** DONE (`e1cb9f3`) — translucent 👆 auto-taps FFF + auto-runs on first intro-level play; per-level localStorage flag; replayable from settings | gameplay B/G1 | palette.ts, main.ts, storage.ts | M/L |
+| B4 | ✅ **`Repeat ×N` tile** DONE (`07b6508`) — ×2/×3 tiles pre-expanded to a flat exec seq (with step→tile mapping for highlights); +2 teaching levels (L13 Peacock Parade, L14 Slalom) | gameplay A | types.ts, engine.ts, palette.ts, levels.ts | M |
+| B5 | ✅ **Level unlocking + feather 🪶** DONE (`40eed65`) — linear unlock, padlock on locked picker tiles, 🪶 N/M counter, parent free-play toggle | gameplay D/G5 | storage.ts, palette.ts, main.ts | M |
+| B6 | ✅ Chip **shapes** (▲◀▶◆ redundant non-colour cue; ↺/↻ are near-mirrors) + step **speed control** (slow/normal/fast) DONE (`da016bd`) | gameplay E | palette.ts, engine.ts, main.ts, style.css | S/M |
+| B7 | ✅ **Too-tired cue** (wheezy synth when fan fires at 0 energy) + **single-step debug** (👣 Tap) DONE (`4bf6778`) | gameplay H/G9 | audio.ts, engine.ts, main.ts, palette.ts | S |
+| B8 | ✅ **Tooling** DONE — ESLint flat config + Prettier + Vitest harness + `ci.yml` lint/test/typecheck job (swept into earlier commits; lint 0 errors, tests 2/2) | code-quality §6 | eslint.config.js, .prettierrc, vitest.config.ts, .github/workflows/ci.yml | M |
+| B9 | ✅ **Split `render.ts`** → `tileset.ts` + `particles.ts` + `render.ts` DONE (`32ac7f3`) — 1028→676 lines; the theme seam is now a file boundary | code-quality F13 | render.ts, tileset.ts, particles.ts | M |
 
 ## Later — v1 (content + ambition)
 
