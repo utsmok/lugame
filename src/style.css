@@ -300,7 +300,7 @@ canvas#board {
 /* ── Controls row ───────────────────────────────────────── */
 .controls {
   display: grid;
-  grid-template-columns: 1fr 1.4fr;
+  grid-template-columns: 1fr 1fr 1.4fr;
   gap: 0.5rem;
   padding: 0.2rem 0.6rem 0.6rem;
 }
@@ -320,6 +320,7 @@ canvas#board {
 .btn:active { transform: scale(0.97); }
 .btn.run { background: var(--good); }
 .btn.clear { background: var(--bad); }
+.btn.step { background: #5a6cc0; }
 .btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* ── Win overlay ────────────────────────────────────────── */

@@ -53,7 +53,8 @@ export type GameEvent =
   | 'collect'
   | 'win'
   | 'finish'
-  | 'click';
+  | 'click'
+  | 'tired';
 
 // --- geometry ---
 

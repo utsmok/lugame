@@ -11,6 +11,7 @@ export interface PaletteCallbacks {
   onAdd: (cmd: Command) => void;
   onRun: () => void;
   onClear: () => void;
+  onStep?: () => void;
   onUndo: () => void;
   onPrevLevel: () => void;
   onNextLevel: () => void;
@@ -141,6 +142,7 @@ export class PaletteUI {
   private programEl!: HTMLElement;
   private runBtn!: HTMLButtonElement;
   private clearBtn!: HTMLButtonElement;
+  private stepBtn!: HTMLButtonElement;
   private prevBtn!: HTMLButtonElement;
   private nextBtn!: HTMLButtonElement;
   private cmdButtons: HTMLButtonElement[] = [];
@@ -296,10 +298,14 @@ export class PaletteUI {
     this.clearBtn = document.createElement('button');
     this.clearBtn.className = 'btn clear';
     this.clearBtn.textContent = T.clear;
+
+    this.stepBtn = document.createElement('button');
+    this.stepBtn.className = 'btn step';
+    this.stepBtn.textContent = T.step;
     this.runBtn = document.createElement('button');
     this.runBtn.className = 'btn run';
     this.runBtn.textContent = T.run;
-    controls.append(this.clearBtn, this.runBtn);
+    controls.append(this.clearBtn, this.stepBtn, this.runBtn);
 
     // Level-select overlay
     this.levelSelectOverlay = h('div', 'overlay lvl-select-overlay');
@@ -361,6 +367,7 @@ export class PaletteUI {
 
     // --- events ---
     this.runBtn.addEventListener('click', () => this.cb.onRun());
+    this.stepBtn.addEventListener('click', () => this.cb.onStep?.());
     this.clearBtn.addEventListener('click', () => this.cb.onClear());
     this.prevBtn.addEventListener('click', () => this.cb.onPrevLevel());
     this.nextBtn.addEventListener('click', () => this.cb.onNextLevel());
@@ -520,6 +527,7 @@ export class PaletteUI {
     const editing = e.phase === 'editing' || e.phase === 'error';
     const hasProgram = e.program.length > 0;
     this.runBtn.disabled = !(editing && hasProgram);
+    this.stepBtn.disabled = !((editing && hasProgram) || (e.phase === 'running' && e.stepMode));
     this.clearBtn.disabled = !(editing && hasProgram);
     this.cmdButtons.forEach((b) => (b.disabled = !editing));
     this.programExpandBtn.disabled = !hasProgram;

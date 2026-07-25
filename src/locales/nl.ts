@@ -17,6 +17,7 @@ export const nl = {
   // controls
   run: '▶ Start',
   clear: '↺ Wissen',
+  step: '👣 Tik',
 
   // win overlay
   winEmoji: '🦚🎉🍪',

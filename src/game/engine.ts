@@ -54,6 +54,10 @@ export class GameEngine {
   readonly maxEnergy = MAX_ENERGY;
   holdOnError = false;
   errorStep = -1;
+
+  /** Single-step debug: when true, update() does NOT auto-advance — each
+   *  command runs only on stepOnce(). Reset on every exit from 'running'. */
+  stepMode = false;
   private stepElapsed = 0;
   private stepDur = STEP_DUR.forward;
   private animalSeq = 0;
@@ -117,9 +121,31 @@ export class GameEngine {
       return;
     }
     this.resetBoard();
+    this.stepMode = false;
     this.phase = 'running';
     this.pc = 0;
     this.stepElapsed = this.stepDur; // fire first command immediately
+  }
+
+  /** Single-step debug entry: like run() but freezes auto-advance after the
+   *  first command — subsequent commands fire only on stepOnce(). */
+  startStepping() {
+    if (!this.editable()) return;
+    if (this.program.length === 0) {
+      this.emit('click');
+      return;
+    }
+    this.resetBoard();
+    this.stepMode = true;
+    this.phase = 'running';
+    this.pc = 0;
+    this.doStep(); // execute the first command immediately
+  }
+
+  /** Advance one command in step mode (no-op outside step mode / running). */
+  stepOnce() {
+    if (!this.stepMode || this.phase !== 'running') return;
+    this.doStep();
   }
 
   /** Reset robot + animals to the level's initial state (keeps the program). */
@@ -141,7 +167,7 @@ export class GameEngine {
 
   // --- main update; dt in seconds ---
   update(dt: number) {
-    if (this.phase === 'running') {
+    if (this.phase === 'running' && !this.stepMode) {
       this.stepElapsed += dt;
       if (this.stepElapsed >= this.stepDur) {
         this.stepElapsed = 0;
@@ -190,6 +216,7 @@ export class GameEngine {
     if (this.pc >= this.program.length) {
       // program finished without reaching the cookie
       this.resetBoard();
+      this.stepMode = false;
       this.phase = 'editing';
       this.emit('finish');
       return;
@@ -223,6 +250,7 @@ export class GameEngine {
           }
         }
         if (this.collected.every(Boolean)) {
+          this.stepMode = false;
           this.phase = 'won';
           this.winT = 0;
           this.emit('win');
@@ -242,7 +270,7 @@ export class GameEngine {
         if (this.energyEnabled && this.energy <= 0) {
           // too tired — feedback nudge, no scare, queue continues
           this.bumpShake = 1;
-          this.emit('bump');
+          this.emit('tired');
           break;
         }
         const cells = fanCells(this.robot.pos, this.robot.dir);

@@ -15,7 +15,8 @@ export type SfxName =
   | 'win'
   | 'bump'
   | 'click'
-  | 'collect';
+  | 'collect'
+  | 'tired';
 
 const SFX_FILE: Record<SfxName, string> = {
   step: 'step.mp3',
@@ -26,6 +27,7 @@ const SFX_FILE: Record<SfxName, string> = {
   bump: 'bump.mp3',
   click: 'click.mp3',
   collect: 'collect.mp3',
+  tired: 'tired.mp3',
 };
 
 // Resolve the AudioContext constructor, including Safari's prefixed variant,
@@ -163,6 +165,11 @@ export class AudioBus {
       case 'bump':
         this.blip(t, 110, 0.13, 'sawtooth', 0.22);
         this.blip(t, 95, 0.16, 'square', 0.14);
+        break;
+      case 'tired':
+        // wheezy descending double-blip — "too tired to fan"
+        this.blip(t, 150, 0.18, 'sawtooth', 0.18);
+        this.blip(t + 0.17, 118, 0.22, 'sawtooth', 0.15);
         break;
       case 'click':
         this.blip(t, 660, 0.04, 'sine', 0.16);

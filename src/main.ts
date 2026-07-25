@@ -32,6 +32,7 @@ const EVENT_SFX: Record<GameEvent, SfxName> = {
   // "finish" reuses the soft click cue (program ended without winning)
   finish: 'click',
   click: 'click',
+  tired: 'tired',
 };
 
 const SETTINGS_KEY = 'lugame.settings';
@@ -91,6 +92,11 @@ class App {
       onRun: () => {
         this.audio.resume();
         this.engine.run();
+      },
+      onStep: () => {
+        this.audio.resume();
+        if (this.engine.stepMode && this.engine.phase === 'running') this.engine.stepOnce();
+        else this.engine.startStepping();
       },
       onClear: () => this.engine.clear(),
       onUndo: () => this.engine.undo(),

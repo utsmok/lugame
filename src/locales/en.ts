@@ -19,6 +19,7 @@ export const en: Translation = {
   // controls
   run: '▶ Start',
   clear: '↺ Clear',
+  step: '👣 Tap',
 
   // win overlay
   winEmoji: '🦚🎉🍪',
