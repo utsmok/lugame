@@ -4,8 +4,11 @@ import {
   type Dir,
   type GameEvent,
   MAX_ENERGY,
+  REPEAT_COUNT,
+  isRepeat,
   type Level,
   type Phase,
+  type ProgramTile,
   type Pos,
   addPos,
   dirVec,
@@ -38,7 +41,7 @@ export class GameEngine {
   pathSet: Set<string>;
   robot: Robot;
   animals: Animal[] = [];
-  program: Command[] = [];
+  program: ProgramTile[] = [];
   pc = 0;
   phase: Phase = 'editing';
 
@@ -58,6 +61,16 @@ export class GameEngine {
   /** Single-step debug: when true, update() does NOT auto-advance — each
    *  command runs only on stepOnce(). Reset on every exit from 'running'. */
   stepMode = false;
+
+  // Expanded execution sequence (repeat tiles resolved to plain commands) and
+  // the program-tile index each step came from (for the active-chip highlight).
+  private execSeq: Command[] = [];
+  private stepTile: number[] = [];
+  /** Program-tile index of the step at `pc` (drives the active-chip highlight). */
+  get activeTile(): number {
+    const i = Math.min(this.pc, this.stepTile.length - 1);
+    return i >= 0 ? (this.stepTile[i] ?? -1) : -1;
+  }
   private stepElapsed = 0;
   private stepDur = STEP_DUR.forward;
   private animalSeq = 0;
@@ -90,7 +103,7 @@ export class GameEngine {
   }
 
   // --- program editing (only while editing or error) ---
-  enqueue(cmd: Command) {
+  enqueue(cmd: ProgramTile) {
     if (!this.editable()) return;
     this.program.push(cmd);
     this.emit('click');
@@ -121,6 +134,7 @@ export class GameEngine {
       return;
     }
     this.resetBoard();
+    this.expand();
     this.stepMode = false;
     this.phase = 'running';
     this.pc = 0;
@@ -136,6 +150,7 @@ export class GameEngine {
       return;
     }
     this.resetBoard();
+    this.expand();
     this.stepMode = true;
     this.phase = 'running';
     this.pc = 0;
@@ -146,6 +161,33 @@ export class GameEngine {
   stepOnce() {
     if (!this.stepMode || this.phase !== 'running') return;
     this.doStep();
+  }
+
+  /** Resolve the program's repeat tiles into a flat executable command list,
+   *  tracking which program tile each step came from (for the active-chip
+   *  highlight). A repeat tile runs the next command N times; a repeat with no
+   *  following plain command (or followed by another repeat) is a silent no-op. */
+  private expand() {
+    this.execSeq = [];
+    this.stepTile = [];
+    const p = this.program;
+    for (let i = 0; i < p.length; i++) {
+      const tile = p[i]!;
+      if (isRepeat(tile)) {
+        const next = p[i + 1];
+        if (next !== undefined && !isRepeat(next)) {
+          const n = REPEAT_COUNT[tile];
+          for (let k = 0; k < n; k++) {
+            this.execSeq.push(next);
+            this.stepTile.push(i + 1);
+          }
+          i++; // also consume the repeated command
+        }
+      } else {
+        this.execSeq.push(tile);
+        this.stepTile.push(i);
+      }
+    }
   }
 
   /** Reset robot + animals to the level's initial state (keeps the program). */
@@ -213,7 +255,7 @@ export class GameEngine {
   }
 
   private doStep() {
-    if (this.pc >= this.program.length) {
+    if (this.pc >= this.execSeq.length) {
       // program finished without reaching the cookie
       this.resetBoard();
       this.stepMode = false;
@@ -221,7 +263,7 @@ export class GameEngine {
       this.emit('finish');
       return;
     }
-    const cmd = this.program[this.pc]!;
+    const cmd = this.execSeq[this.pc]!;
     this.stepDur = STEP_DUR[cmd];
     this.pc++;
 
@@ -300,7 +342,7 @@ export class GameEngine {
     this.bumpShake = 1;
     this.emit('bump');
     if (this.easyMode) return;
-    if (this.holdOnError) { this.phase = 'error'; this.errorStep = this.pc - 1; }
+    if (this.holdOnError) { this.phase = 'error'; this.errorStep = this.stepTile[this.pc - 1] ?? -1; }
     else { this.phase = 'bumped'; this.bumpT = 0; }
   }
 

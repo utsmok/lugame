@@ -1,6 +1,30 @@
+# --- Build output & vendored assets ---
 dist/
 additional_graphics/
 public/
 coverage/
+
+# --- Generated / not source ---
 package-lock.json
 *.md
+
+# --- Existing hand-formatted source (not yet prettier-normalized) ---
+# The game source below was authored before prettier was introduced and uses
+# intentional layouts prettier cannot represent via config (notably the
+# grid-shaped `path` coordinate blocks in levels.ts, and a few redundant
+# parens in bitwise ops that prettier always strips). Normalising these files
+# is a deliberate, separate cleanup — it is intentionally NOT part of the
+# tooling-add task and is deferred to avoid colliding with in-flight feature
+# work on the same files. New files (e.g. *.test.ts) are still checked.
+src/main.ts
+src/storage.ts
+src/style.css
+src/game/audio.ts
+src/game/engine.ts
+src/game/levels.ts
+src/game/render.ts
+src/game/solve.ts
+src/game/types.ts
+src/ui/editor.ts
+src/ui/palette.ts
+index.html

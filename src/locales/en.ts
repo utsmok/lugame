@@ -73,6 +73,8 @@ export const en: Translation = {
   cmdLeft: 'Left',
   cmdRight: 'Right',
   cmdFan: 'Shoo!',
+  cmdRepeat2: '×2',
+  cmdRepeat3: '×3',
 
   // level editor — direction buttons
   dirN: '\u2191N',
@@ -137,4 +139,6 @@ export const en: Translation = {
   lvl10: 'Hungry Peacock',
   lvl11: 'The Maze',
   lvl12: 'Big Garden',
+  lvl13: 'Peacock Parade',
+  lvl14: 'Slalom',
 };

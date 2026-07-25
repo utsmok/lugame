@@ -6,6 +6,17 @@ export type Dir = 0 | 90 | 180 | 270; // 0=N(up), 90=E(right), 180=S(down), 270=
 
 export type Command = 'forward' | 'left' | 'right' | 'fan';
 
+/** Loop tiles for the program queue: age-appropriate FIXED repeats (no counter).
+ *  A repeat tile runs the immediately-following command N times total, e.g.
+ *  [×2, F] executes F twice. See engine.expand(). */
+export type RepeatTile = 'repeat2' | 'repeat3';
+export type ProgramTile = Command | RepeatTile;
+export const REPEAT_TILES: readonly RepeatTile[] = ['repeat2', 'repeat3'];
+export function isRepeat(t: ProgramTile): t is RepeatTile {
+  return t === 'repeat2' || t === 'repeat3';
+}
+export const REPEAT_COUNT: Record<RepeatTile, number> = { repeat2: 2, repeat3: 3 };
+
 export interface Pos {
   c: number;
   r: number;
@@ -113,5 +124,15 @@ export const COMMAND_EMOJI: Record<Command, string> = {
   left: '↺',
   right: '↻',
   fan: '🪶',
+};
+
+/** Emoji for any program tile (commands + repeat markers). */
+export const TILE_EMOJI: Record<ProgramTile, string> = {
+  forward: '⬆️',
+  left: '↺',
+  right: '↻',
+  fan: '🪶',
+  repeat2: '🔁',
+  repeat3: '🔁',
 };
 

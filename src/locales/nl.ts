@@ -71,6 +71,8 @@ export const nl = {
   cmdLeft: 'Links',
   cmdRight: 'Rechts',
   cmdFan: 'AhaAha!!',
+  cmdRepeat2: '×2',
+  cmdRepeat3: '×3',
 
   // level editor — direction buttons (arrows stay; compass letters localisable)
   dirN: '\u2191N',
@@ -135,4 +137,6 @@ export const nl = {
   lvl10: 'Hongerige Pauw',
   lvl11: 'Het Doolhof',
   lvl12: 'Grote Tuin',
+  lvl13: 'Pauwenparade',
+  lvl14: 'Slalom',
 };

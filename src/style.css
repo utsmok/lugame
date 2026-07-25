@@ -296,6 +296,7 @@ canvas#board {
 .cmd.left, .chip.left { background: var(--left); }
 .cmd.right, .chip.right { background: var(--right); }
 .cmd.fan, .chip.fan { background: var(--fan); }
+.cmd.repeat2, .cmd.repeat3, .chip.repeat2, .chip.repeat3 { background: var(--accent); color: #111; }
 
 /* ── Controls row ───────────────────────────────────────── */
 .controls {

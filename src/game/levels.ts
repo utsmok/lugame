@@ -236,4 +236,38 @@ export const LEVELS: Level[] = [
     ],
     energy: 2,
   },
+
+  // 13 — teach Repeat (×3). Two long arms; [×3, F] R [×3, F] beats 6 plain taps.
+  //   F F F R F F F
+  {
+    id: 13,
+    name: 'Pauwenparade',
+    cols: 4,
+    rows: 4,
+    path: [
+      { c: 0, r: 0 }, { c: 1, r: 0 }, { c: 2, r: 0 }, { c: 3, r: 0 },
+      { c: 3, r: 1 }, { c: 3, r: 2 }, { c: 3, r: 3 },
+    ],
+    start: { c: 0, r: 0 },
+    startDir: 90,
+    goals: [{ c: 3, r: 3 }],
+    animals: [],
+  },
+
+  // 14 — Repeat (×2/×3) + a fan between two runs.   F F SHOO F F F R F F
+  {
+    id: 14,
+    name: 'Slalom',
+    cols: 6,
+    rows: 3,
+    path: [
+      { c: 0, r: 0 }, { c: 1, r: 0 }, { c: 2, r: 0 }, { c: 3, r: 0 },
+      { c: 4, r: 0 }, { c: 5, r: 0 },
+      { c: 5, r: 1 }, { c: 5, r: 2 },
+    ],
+    start: { c: 0, r: 0 },
+    startDir: 90,
+    goals: [{ c: 5, r: 2 }],
+    animals: [{ kind: 'cow', pos: { c: 3, r: 0 } }],
+  },
 ];

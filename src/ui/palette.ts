@@ -1,14 +1,16 @@
 import type { GameEngine } from '../game/engine';
 import {
-  COMMAND_EMOJI,
-  type Command,
+  TILE_EMOJI,
+  REPEAT_COUNT,
+  isRepeat,
+  type ProgramTile,
   type Level,
 } from '../game/types';
 import { T, availableLocales, getLocale, setLocale, tr } from '../i18n';
 import { THEME_REGISTRY, getStoredTheme } from '../game/theme';
 
 export interface PaletteCallbacks {
-  onAdd: (cmd: Command) => void;
+  onAdd: (cmd: ProgramTile) => void;
   onRun: () => void;
   onClear: () => void;
   onStep?: () => void;
@@ -278,18 +280,20 @@ export class PaletteUI {
     this.programOverlay.appendChild(poCard);
 
     const palette = h('div', 'palette');
-    const CMD_LABEL: Record<Command, string> = {
+    const TILE_LABEL: Record<ProgramTile, string> = {
       forward: T.cmdForward,
       left: T.cmdLeft,
       right: T.cmdRight,
       fan: T.cmdFan,
+      repeat2: T.cmdRepeat2,
+      repeat3: T.cmdRepeat3,
     };
-    (['forward', 'left', 'right', 'fan'] as Command[]).forEach((cmd) => {
+    (['forward', 'left', 'right', 'fan', 'repeat2', 'repeat3'] as ProgramTile[]).forEach((tile) => {
       const b = document.createElement('button');
-      b.className = `cmd ${cmd}`;
-      b.innerHTML = `<span>${COMMAND_EMOJI[cmd]}</span><span class="label">${CMD_LABEL[cmd]}</span>`;
-      b.setAttribute('aria-label', CMD_LABEL[cmd]);
-      b.addEventListener('click', () => this.cb.onAdd(cmd));
+      b.className = `cmd ${tile}`;
+      b.innerHTML = `<span>${TILE_EMOJI[tile]}</span><span class="label">${TILE_LABEL[tile]}</span>`;
+      b.setAttribute('aria-label', TILE_LABEL[tile]);
+      b.addEventListener('click', () => this.cb.onAdd(tile));
       palette.appendChild(b);
       this.cmdButtons.push(b);
     });
@@ -505,7 +509,7 @@ export class PaletteUI {
   private programOverlayGrid!: HTMLElement;
   private programOverlayClose!: HTMLButtonElement;
   private allChips: HTMLElement[] = [];
-  private prevGroups: { cmd: Command; len: number }[] = [];
+  private prevGroups: { cmd: ProgramTile; len: number }[] = [];
 
   sync(e: GameEngine) {
     const sig = e.program.join(',');
@@ -519,7 +523,7 @@ export class PaletteUI {
       const first = Number(chip.dataset.first);
       const last = Number(chip.dataset.last);
       const inRange = (n: number) => n >= first && n <= last;
-      chip.classList.toggle('active', active && inRange(e.pc));
+      chip.classList.toggle('active', active && inRange(e.activeTile));
       chip.classList.toggle('error', errIdx >= 0 && inRange(errIdx));
     });
 
@@ -547,7 +551,7 @@ export class PaletteUI {
     this.wasWon = won;
   }
 
-  private rebuildChips(program: Command[]) {
+  private rebuildChips(program: ProgramTile[]) {
     this.programEl.innerHTML = '';
     this.programOverlayGrid.innerHTML = '';
     this.allChips = [];
@@ -614,13 +618,14 @@ export class PaletteUI {
   }
 
   /** Group consecutive identical commands into runs (for condensing). */
-  private groupsOf(program: Command[]): { cmd: Command; start: number; len: number }[] {
-    const groups: { cmd: Command; start: number; len: number }[] = [];
+  private groupsOf(program: ProgramTile[]): { cmd: ProgramTile; start: number; len: number }[] {
+    const groups: { cmd: ProgramTile; start: number; len: number }[] = [];
     for (let i = 0; i < program.length;) {
-      const cmd = program[i]!;
+      const tile = program[i]!;
       let len = 1;
-      while (i + len < program.length && program[i + len] === cmd) len++;
-      groups.push({ cmd, start: i, len });
+      // only condense consecutive identical PLAIN commands; repeats stay solo
+      while (!isRepeat(tile) && i + len < program.length && program[i + len] === tile) len++;
+      groups.push({ cmd: tile, start: i, len });
       i += len;
     }
     return groups;
@@ -628,8 +633,8 @@ export class PaletteUI {
 
   /** True if prev and current groups share the same command at each index (safe to animate counts). */
   private cmdsAligned(
-    a: { cmd: Command; len: number }[],
-    b: { cmd: Command; len: number }[],
+    a: { cmd: ProgramTile; len: number }[],
+    b: { cmd: ProgramTile; len: number }[],
   ): boolean {
     const n = Math.min(a.length, b.length);
     for (let k = 0; k < n; k++) {
@@ -651,10 +656,11 @@ export class PaletteUI {
     );
   }
 
-  private makeChip(cmd: Command, first: number, len: number, big: boolean): HTMLElement {
-    const chip = h('div', `chip ${cmd}` + (big ? ' big' : ''));
-    let inner = COMMAND_EMOJI[cmd];
-    inner += `<span class="chip-badge" aria-hidden="true">\u00D7${len}</span>`;
+  private makeChip(tile: ProgramTile, first: number, len: number, big: boolean): HTMLElement {
+    const chip = h('div', `chip ${tile}` + (big ? ' big' : ''));
+    const badgeN = isRepeat(tile) ? REPEAT_COUNT[tile] : len;
+    let inner = TILE_EMOJI[tile];
+    inner += `<span class="chip-badge" aria-hidden="true">\u00D7${badgeN}</span>`;
     inner += `<span class="chip-remove" aria-label="${T.removeStep}">\u2715</span>`;
     chip.innerHTML = inner;
     chip.dataset.first = String(first);

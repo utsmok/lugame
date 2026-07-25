@@ -12,13 +12,7 @@ import globals from 'globals';
 export default tseslint.config(
   // Build output + vendored assets + tooling config files are not linted.
   {
-    ignores: [
-      'dist/',
-      'additional_graphics/',
-      'public/',
-      'coverage/',
-      '**/*.config.*',
-    ],
+    ignores: ['dist/', 'additional_graphics/', 'public/', 'coverage/', '**/*.config.*'],
   },
 
   js.configs.recommended,
