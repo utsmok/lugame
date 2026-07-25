@@ -14,6 +14,7 @@ const EVENT_SFX: Record<GameEvent, SfxName> = {
   flee: 'flee',
   win: 'win',
   bump: 'bump',
+  collect: 'click',
   // "finish" reuses the soft click cue (program ended without winning)
   finish: 'click',
   click: 'click',

@@ -32,7 +32,7 @@ export interface Level {
   path: Pos[];
   start: Pos;
   startDir: Dir;
-  goal: Pos;
+  goals: Pos[];
   animals: AnimalSpawn[];
 }
 
@@ -44,6 +44,7 @@ export type GameEvent =
   | 'fan'
   | 'flee'
   | 'bump'
+  | 'collect'
   | 'win'
   | 'finish'
   | 'click';

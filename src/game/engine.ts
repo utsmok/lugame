@@ -46,6 +46,9 @@ export class GameEngine {
   bumpT = 0; // counts up while bumped
   bumpDir: Dir = 0;
   winT = 0;
+  bumpShake = 0; // visual nudge 0..1, decays (used in both bump modes)
+  easyMode = false; // when true, a blocked step shakes + plays the error sound but keeps going
+  collected: boolean[] = [];
   private stepElapsed = 0;
   private stepDur = STEP_DUR.forward;
   private animalSeq = 0;
@@ -69,6 +72,7 @@ export class GameEngine {
       scared: false,
       fleeT: 0,
     }));
+    this.collected = level.goals.map(() => false);
   }
 
   // --- program editing (only while editing) ---
@@ -80,6 +84,12 @@ export class GameEngine {
   undo() {
     if (this.phase !== 'editing') return;
     this.program.pop();
+    this.emit('click');
+  }
+  removeAt(index: number) {
+    if (this.phase !== 'editing') return;
+    if (index < 0 || index >= this.program.length) return;
+    this.program.splice(index, 1);
     this.emit('click');
   }
   clear() {
@@ -112,7 +122,9 @@ export class GameEngine {
     });
     this.fanT = 0;
     this.bumpT = 0;
+    this.bumpShake = 0;
     this.winT = 0;
+    this.collected = this.level.goals.map(() => false);
   }
 
   // --- main update; dt in seconds ---
@@ -145,6 +157,11 @@ export class GameEngine {
     // decay fan animation
     if (this.fanT > 0) {
       this.fanT = Math.max(0, this.fanT - dt * 1.1);
+    }
+
+    // decay bump shake (visual nudge)
+    if (this.bumpShake > 0) {
+      this.bumpShake = Math.max(0, this.bumpShake - dt / 0.35);
     }
 
     // advance fleeing animals
@@ -183,7 +200,14 @@ export class GameEngine {
         }
         this.robot.pos = next;
         this.emit('step');
-        if (samePos(this.robot.pos, this.level.goal)) {
+        for (let i = 0; i < this.level.goals.length; i++) {
+          if (!this.collected[i] && samePos(this.level.goals[i], next)) {
+            this.collected[i] = true;
+            this.emit('collect');
+            break;
+          }
+        }
+        if (this.collected.every(Boolean)) {
           this.phase = 'won';
           this.winT = 0;
           this.emit('win');
@@ -217,10 +241,13 @@ export class GameEngine {
   }
 
   private triggerBump(dir: Dir) {
-    this.phase = 'bumped';
     this.bumpDir = dir;
-    this.bumpT = 0;
+    this.bumpShake = 1;
     this.emit('bump');
+    if (!this.easyMode) {
+      this.phase = 'bumped';
+      this.bumpT = 0;
+    }
   }
 
   private emit(e: GameEvent) {
