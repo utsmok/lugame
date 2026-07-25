@@ -24,7 +24,15 @@ Both were flagged by multiple audits independently; both landed in the a11y fix 
 - ✅ **a11y fix pass** — P0-1, P0-2, N1, N3, N4 done; touch targets (N2 partial); `:focus-visible` added.
 - ✅ **Win confetti** (was dead code) — `render.ts` `spawnConfetti`/`stepConfetti`/`drawConfetti` existed but were never called; now wired on the `won` phase transition via `prevPhase`, particles culled past the canvas, reduced-motion gated. (commit `516e56a`)
 - ✅ **Directional peacock sprite** — replaces the 🦚 emoji with `public/assets/img/peacock-walk.png` (4 cols R,D,U,L × 3-frame walk cycle); direction map verified per-frame by pixel analysis. `peacock-folded.png` shipped but reserved (its Up/Down frames are ambiguous). (commit `516e56a`)
-- 🟢 **In-flight (parallel agents):** N2-finish, N5+N6, N8, B1 (`src/game/solve.ts`). N7 (tsconfig flags) runs after, sequentially (it cascades type errors into every file).
+- ✅ **N2-finish** — custom-delete 34→48px, editor ± 32→48px touch targets. (`c48137d`)
+- ✅ **N5+N6** — overlays are real dialogs (`role=dialog`, `aria-modal`, focus trap + restore, Escape); custom-level delete confirms. (`c48137d`)
+- ✅ **N8** — `GameEngine` constructed once; resize debounced ~120ms. (`c48137d`)
+- ✅ **B1** — `src/game/solve.ts` pure BFS solver; validated on all 12 levels (solve-len == doc-len + real-engine replay-win). (`c48137d`)
+- ✅ **N7** — tsconfig strict flags (`noUncheckedIndexedAccess`, `noUnusedLocals`, `noImplicitReturns`, `verbatimModuleSyntax`); 47 errors fixed (non-null assertions on provably-in-bounds accesses + 2 dead fields removed). (`521bb6b`)
+- ✅ **B2 (editor)** — live solvability + par indicator in the level editor (first consumer of the solver). (`e6fba9d`)
+- 🔧 **L9 comment** — corrected Level 9's stale documented solution (B1 finding). (`521bb6b`)
+
+> ✅ **Now-tier (N1–N8) complete.**
 
 ## Now — alpha polish (cheap · high-value · low-risk)
 
@@ -43,8 +51,8 @@ Both were flagged by multiple audits independently; both landed in the a11y fix 
 
 | # | Item | Audit | Files | Effort |
 |---|---|---|---|---|
-| B1 | **`src/game/solve.ts`** — promote the throwaway `/tmp/solve.py` BFS into the codebase (pure `solve(level, fromState?)`) | gameplay C | new src/game/solve.ts | M |
-| B2 | Ghost-path **hint** (💡) + editor **solvability check** + star **par** — all built on B1 | gameplay C | palette.ts, editor.ts, render.ts | M |
+| B1 | ✅ **`src/game/solve.ts`** — pure BFS `solve(level)`; validated on all 12 levels (solve-len == doc-len + real-engine replay-win). DONE `c48137d` | gameplay C | src/game/solve.ts | M |
+| B2 | 🟡 editor **solvability + par** DONE (`e6fba9d`); in-game **💡 hint** + **par display** still TODO | gameplay C | palette.ts, editor.ts, render.ts | M |
 | B3 | **No-reading onboarding demo** (translucent 👆 auto-taps + auto-runs; per-mechanic localStorage flag; replayable from settings) | gameplay B/G1 | palette.ts, main.ts | M/L |
 | B4 | **`Repeat ×N` tile** (two fixed tiles ×2/×3 — age-appropriate loop; no counter) | gameplay A | types.ts, engine.ts, palette.ts, levels.ts | M |
 | B5 | **Level unlocking + feather 🪶 collection** (padlock until cleared; feathers = plumage total; parent free-play toggle) | gameplay D/G5 | storage.ts, palette.ts | M |
