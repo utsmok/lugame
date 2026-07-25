@@ -81,8 +81,8 @@ function trapTab(modal: HTMLElement, ev: KeyboardEvent): void {
     modal.focus();
     return;
   }
-  const first = items[0];
-  const last = items[items.length - 1];
+  const first = items[0]!;
+  const last = items[items.length - 1]!;
   const active = document.activeElement;
   if (ev.shiftKey && (active === first || !modal.contains(active))) {
     ev.preventDefault();
@@ -147,7 +147,6 @@ export class PaletteUI {
   private overlay!: HTMLElement;
   private overlayBtn!: HTMLButtonElement;
   private lvlName!: HTMLElement;
-  private chips: HTMLElement[] = [];
   private cachedProgram = '';
   private levelIndex = 0;
   private levelTotal = 1;
@@ -171,12 +170,6 @@ export class PaletteUI {
     hold: undefined as unknown as HTMLElement,
     music: undefined as unknown as HTMLElement,
     sound: undefined as unknown as HTMLElement,
-  };
-  private settings: SettingsState = {
-    easy: false,
-    holdOnError: false,
-    music: true,
-    sound: true,
   };
 
   constructor(mount: HTMLElement, private cb: PaletteCallbacks) {
@@ -485,7 +478,6 @@ export class PaletteUI {
   }
 
   setSettings(s: SettingsState) {
-    this.settings = s;
     const map: Record<ToggleKey, boolean> = {
       easy: s.easy,
       hold: s.holdOnError,
@@ -568,12 +560,12 @@ export class PaletteUI {
     // compact row — rebuild, pulsing chips whose count just changed
     const aligned = this.cmdsAligned(this.prevGroups, groups);
     for (let k = 0; k < groups.length; k++) {
-      const g = groups[k];
+      const g = groups[k]!;
       const chip = this.makeChip(g.cmd, g.start, g.len, false);
       this.programEl.appendChild(chip);
       this.allChips.push(chip);
       const pulse =
-        aligned && (k >= this.prevGroups.length || this.prevGroups[k].len !== g.len);
+        aligned && (k >= this.prevGroups.length || this.prevGroups[k]!.len !== g.len);
       if (pulse) this.pulseBadge(chip);
     }
     this.prevGroups = groups.map((g) => ({ cmd: g.cmd, len: g.len }));
@@ -617,7 +609,7 @@ export class PaletteUI {
   private groupsOf(program: Command[]): { cmd: Command; start: number; len: number }[] {
     const groups: { cmd: Command; start: number; len: number }[] = [];
     for (let i = 0; i < program.length;) {
-      const cmd = program[i];
+      const cmd = program[i]!;
       let len = 1;
       while (i + len < program.length && program[i + len] === cmd) len++;
       groups.push({ cmd, start: i, len });
@@ -633,7 +625,7 @@ export class PaletteUI {
   ): boolean {
     const n = Math.min(a.length, b.length);
     for (let k = 0; k < n; k++) {
-      if (a[k].cmd !== b[k].cmd) return false;
+      if (a[k]!.cmd !== b[k]!.cmd) return false;
     }
     return true;
   }

@@ -86,11 +86,11 @@ export function step(s: SolveState, cmd: Command, ctx: SolveCtx): SolveState {
       const next = addPos({ c: s.c, r: s.r }, dirVec(s.dir));
       if (!ctx.pathSet.has(key(next))) return s; // off-path: bump
       for (let i = 0; i < ctx.animals.length; i++) {
-        if (!(s.scared & (1 << i)) && samePos(ctx.animals[i], next)) return s; // blocked: bump
+        if (!(s.scared & (1 << i)) && samePos(ctx.animals[i]!, next)) return s; // blocked: bump
       }
       const ns: SolveState = { ...s, c: next.c, r: next.r };
       for (let i = 0; i < ctx.goals.length; i++) {
-        if (!(ns.collected & (1 << i)) && samePos(ctx.goals[i], next)) {
+        if (!(ns.collected & (1 << i)) && samePos(ctx.goals[i]!, next)) {
           ns.collected |= (1 << i);
           if (ctx.energyEnabled && ns.energy < MAX_ENERGY) ns.energy++; // eat to refill
           break; // at most one cookie per cell
@@ -107,7 +107,7 @@ export function step(s: SolveState, cmd: Command, ctx: SolveCtx): SolveState {
       const cells = fanCells({ c: s.c, r: s.r }, s.dir);
       let scared = s.scared;
       for (let i = 0; i < ctx.animals.length; i++) {
-        if (!(scared & (1 << i)) && cells.some((cell) => samePos(cell, ctx.animals[i]))) {
+        if (!(scared & (1 << i)) && cells.some((cell) => samePos(cell, ctx.animals[i]!))) {
           scared |= (1 << i);
         }
       }
@@ -141,8 +141,8 @@ export function solve(level: Level): Command[] | null {
   const queueKeys: string[] = [startKey];
 
   for (let head = 0; head < queue.length; head++) {
-    const cur = queue[head];
-    const curKey = queueKeys[head];
+    const cur = queue[head]!;
+    const curKey = queueKeys[head]!;
     for (const cmd of COMMANDS) {
       const nxt = step(cur, cmd, ctx);
       const nk = serialize(nxt);

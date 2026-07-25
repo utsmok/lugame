@@ -77,7 +77,7 @@ function cellSeed(c: number, r: number): number {
 function parseHex(hex: string): [number, number, number] {
   const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
   if (!m) return [0, 0, 0];
-  const n = parseInt(m[1], 16);
+  const n = parseInt(m[1]!, 16);
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
 
@@ -105,10 +105,10 @@ class ConfigTileset implements Tileset {
     // Subtle scattered tufts/dots for texture — colours derived from the
     // gradient endpoints so they always fit the theme (farm greens, desert sands).
     const top: [number, number, number] = stops.length
-      ? parseHex(stops[0].color)
+      ? parseHex(stops[0]!.color)
       : [120, 180, 120];
     const bot: [number, number, number] = stops.length
-      ? parseHex(stops[stops.length - 1].color)
+      ? parseHex(stops[stops.length - 1]!.color)
       : top;
     const dark = mixRgb(top, [0, 0, 0], 0.35);
     const light = mixRgb(bot, [255, 255, 255], 0.08);
@@ -286,7 +286,7 @@ class ConfigTileset implements Tileset {
     ctx.globalAlpha = 0.75;
     const petals = 4 + Math.floor(rng() * 3); // 4–6
     const hues = ['#ff7eb3', '#ffd166', '#ff9f43', '#a29bfe', '#fd79a8', '#ffeaa7'];
-    const hue = hues[Math.floor(rng() * hues.length)];
+    const hue = hues[Math.floor(rng() * hues.length)]!;
     for (let i = 0; i < petals; i++) {
       const ang = (i / petals) * Math.PI * 2 + rng() * 0.3;
       const px = cx + Math.cos(ang) * r * 1.1;
@@ -605,8 +605,8 @@ export class Renderer {
       if (!was && collected[i] && !REDUCED) { // P0-1: skip collection sparkle under reduced-motion
         // Just collected — spawn sparkle
         this.sparkles.set(i, {
-          x: cx(goals[i].c),
-          y: cy(goals[i].r),
+        x: cx(goals[i]!.c),
+        y: cy(goals[i]!.r),
           life: 1,
           particles: this.makeSparkleParticles(),
         });
@@ -626,7 +626,7 @@ export class Renderer {
     // Draw uncollected cookies with staggered pulse
     for (let i = 0; i < goals.length; i++) {
       if (collected[i]) continue; // already collected — skip
-      const g = goals[i];
+      const g = goals[i]!;
       const phase = now * 3 + i * 0.9; // stagger by index
       const pulse = 1 + Math.sin(phase) * 0.07;
       const x = cx(g.c);
@@ -657,7 +657,7 @@ export class Renderer {
         dx: Math.cos(ang),
         dy: Math.sin(ang),
         size: 3 + Math.random() * 5,
-        color: colors[Math.floor(Math.random() * colors.length)],
+        color: colors[Math.floor(Math.random() * colors.length)]!,
         ang,
         speed: 20 + Math.random() * 50,
       });
@@ -673,7 +673,7 @@ export class Renderer {
         dx: Math.cos(ang) * 0.6,
         dy: -Math.abs(Math.sin(ang)) * 0.8 - 0.3, // bias upward
         size: 1.5 + Math.random() * 3,
-        color: colors[Math.floor(Math.random() * colors.length)],
+        color: colors[Math.floor(Math.random() * colors.length)]!,
         ang,
         speed: 10 + Math.random() * 20,
       });
@@ -778,7 +778,7 @@ export class Renderer {
         const ang = (i / FAN_DOTS) * Math.PI * 2 + now * 0.6;
         const dx = x + Math.cos(ang) * radius;
         const dy = y + Math.sin(ang) * radius;
-        ctx.fillStyle = this.fanColors[i % this.fanColors.length];
+        ctx.fillStyle = this.fanColors[i % this.fanColors.length]!;
         ctx.beginPath();
         ctx.arc(dx, dy, cell * 0.1 * (0.6 + e.fanT * 0.6), 0, Math.PI * 2);
         ctx.fill();
@@ -920,7 +920,7 @@ export class Renderer {
       return;
     }
     const facing = ((Math.round(e.robot.ddir / 90) % 4) + 4) % 4;
-    const col = WALK_COL[facing];
+    const col = WALK_COL[facing]!;
     const row = e.phase === 'running' ? Math.floor(now * 8) % WALK_FRAMES : 0;
     const smooth = ctx.imageSmoothingEnabled;
     ctx.imageSmoothingEnabled = false; // crisp pixel sprite
@@ -987,7 +987,7 @@ export class Renderer {
         size: 6 + Math.random() * 8,
         rot: Math.random() * Math.PI,
         vr: (Math.random() - 0.5) * 10,
-        color: this.confettiColors[i % this.confettiColors.length],
+        color: this.confettiColors[i % this.confettiColors.length]!,
         life: 1,
       });
     }

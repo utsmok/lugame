@@ -581,7 +581,7 @@ export class LevelEditor {
   private trimToFit(): void {
     const ok = (p: Pos) => p.c >= 0 && p.c < this.cols && p.r >= 0 && p.r < this.rows;
     for (const k of [...this.pathSet]) {
-      const [c, r] = k.split(',').map(Number);
+      const [c, r] = k.split(',').map(Number) as [number, number];
       if (!ok({ c, r })) this.pathSet.delete(k);
     }
     if (this.start && !ok(this.start)) this.start = null;
@@ -617,7 +617,7 @@ export class LevelEditor {
           marker.textContent = '\u{1F36A}';
         } else {
           const animal = this.animals.find((a) => a.pos.c === c && a.pos.r === r);
-          if (animal) marker.textContent = EDITOR_ANIMAL_EMOJI[animal.kind];
+          if (animal) marker.textContent = EDITOR_ANIMAL_EMOJI[animal.kind]!;
         }
         if (marker.textContent) cell.appendChild(marker);
 
@@ -708,7 +708,7 @@ export class LevelEditor {
       name: this.nameInput.value.trim() || T.edNamePlaceholder,
       cols: this.cols,
       rows: this.rows,
-      path: [...this.pathSet].map((k) => { const [c, r] = k.split(',').map(Number); return { c, r }; }),
+      path: [...this.pathSet].map((k) => { const [c, r] = k.split(',').map(Number) as [number, number]; return { c, r }; }),
       start: { ...this.start! },
       startDir: this.startDir,
       goals: this.goals.map((g) => ({ ...g })),

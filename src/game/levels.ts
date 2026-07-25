@@ -148,7 +148,7 @@ export const LEVELS: Level[] = [
   },
 
   // 9 — cross-shaped garden, two animals. Shoo, eat, return, shoo, eat.
-  //   F F L SHOO F F L L F F F F   (energy 1)
+  //   F SHOO F L F F L L F F F F   (energy 1; fan from (2,3) N clears both)
   {
     id: 9,
     name: 'Koekjestuin',

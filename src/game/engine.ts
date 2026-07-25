@@ -194,7 +194,7 @@ export class GameEngine {
       this.emit('finish');
       return;
     }
-    const cmd = this.program[this.pc];
+    const cmd = this.program[this.pc]!;
     this.stepDur = STEP_DUR[cmd];
     this.pc++;
 
@@ -215,7 +215,7 @@ export class GameEngine {
         this.robot.pos = next;
         this.emit('step');
         for (let i = 0; i < this.level.goals.length; i++) {
-          if (!this.collected[i] && samePos(this.level.goals[i], next)) {
+          if (!this.collected[i] && samePos(this.level.goals[i]!, next)) {
             this.collected[i] = true;
             if (this.energyEnabled && this.energy < this.maxEnergy) this.energy++;
             this.emit('collect');

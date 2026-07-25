@@ -476,7 +476,7 @@ export class AudioBus {
             s /= 1.75
             break
         }
-        ch[i] += s * vol * env
+        ch[i] = ch[i]! + s * vol * env
       }
     }
 
@@ -540,20 +540,20 @@ export class AudioBus {
     for (let i = len - fadeSamples; i < len; i++) {
       const fade = (i - (len - fadeSamples)) / fadeSamples
       const smooth = fade * fade * (3 - 2 * fade) // smoothstep
-      L[i] *= 1 - smooth
-      R[i] *= 1 - smooth
+      L[i] = L[i]! * (1 - smooth)
+      R[i] = R[i]! * (1 - smooth)
     }
 
     // Normalize gently so nothing clips
     let peak = 0
     for (let i = 0; i < len; i++) {
-      peak = Math.max(peak, Math.abs(L[i]), Math.abs(R[i]))
+      peak = Math.max(peak, Math.abs(L[i]!), Math.abs(R[i]!))
     }
     if (peak > 0.85) {
       const scale = 0.8 / peak
       for (let i = 0; i < len; i++) {
-        L[i] *= scale
-        R[i] *= scale
+        L[i] = L[i]! * scale
+        R[i] = R[i]! * scale
       }
     }
 

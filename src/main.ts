@@ -85,7 +85,7 @@ class App {
     document.documentElement.lang = getLocale();
     const mount = document.getElementById('app');
     if (!mount) throw new Error('lugame: mount element #app not found');
-    this.engine = new GameEngine(this.levels[0]);
+    this.engine = new GameEngine(this.levels[0]!);
     this.ui = new PaletteUI(mount, {
       onAdd: (c) => this.engine.enqueue(c),
       onRun: () => {
@@ -180,7 +180,7 @@ class App {
   private changeLevel(index: number) {
     if (index < 0 || index >= this.levels.length) return;
     this.levelIndex = index;
-    this.engine = new GameEngine(this.levels[index]);
+    this.engine = new GameEngine(this.levels[index]!);
     this.engine.easyMode = this.settings.easy;
     this.engine.holdOnError = this.settings.holdOnError;
     this.wireAudio();
@@ -249,7 +249,7 @@ class App {
     window.addEventListener('keydown', (ev) => {
       if (ev.code in map) {
         ev.preventDefault();
-        this.engine.enqueue(map[ev.code]);
+        this.engine.enqueue(map[ev.code]!);
       } else if (ev.code === 'Enter' || ev.code === 'Space') {
         ev.preventDefault();
         this.audio.resume();
