@@ -18,7 +18,7 @@ import {
   loadCustomLevels,
   saveCustomLevel,
 } from './storage';
-import { T, getLocale } from './i18n';
+import { T, getLocale, tr } from './i18n';
 import type { Command, GameEvent, Level } from './game/types';
 
 const EVENT_SFX: Record<GameEvent, SfxName> = {
@@ -115,7 +115,7 @@ class App {
     this.applySettings();
 
     this.refreshLevelList();
-    this.ui.setLevelInfo(this.levelIndex, this.levels.length, this.engine.level.name);
+    this.ui.setLevelInfo(this.levelIndex, this.levels.length, this.levelName(this.engine.level));
     this.ui.setSettings(this.settings);
 
     this.resize();
@@ -169,9 +169,18 @@ class App {
     this.ui.setSettings(this.settings);
   }
 
+  /** Localized name for a level: built-ins resolve via `lvl<id>` locale keys;
+   *  custom levels (and any missing key) fall back to their stored name. */
+  private levelName(l: Level): string {
+    if (!LEVELS.includes(l)) return l.name;
+    const k = `lvl${l.id}`;
+    const v = tr(k);
+    return v === k ? l.name : v;
+  }
+
   private refreshLevelList() {
     this.ui.setLevelList(
-      this.levels.map((l) => l.name),
+      this.levels.map((l) => this.levelName(l)),
       LEVELS.length,
       this.levels.map((l) => l.id),
     );
@@ -184,7 +193,7 @@ class App {
     this.engine.easyMode = this.settings.easy;
     this.engine.holdOnError = this.settings.holdOnError;
     this.wireAudio();
-    this.ui.setLevelInfo(index, this.levels.length, this.engine.level.name);
+    this.ui.setLevelInfo(index, this.levels.length, this.levelName(this.engine.level));
   }
 
   // ── editor ──────────────────────────────────────────────
@@ -204,7 +213,7 @@ class App {
     this.engine.easyMode = this.settings.easy;
     this.engine.holdOnError = this.settings.holdOnError;
     this.wireAudio();
-    this.ui.setLevelInfo(this.levelIndex, this.levels.length, level.name);
+    this.ui.setLevelInfo(this.levelIndex, this.levels.length, this.levelName(level));
   }
 
   private saveCustom(level: Level) {

@@ -120,4 +120,18 @@ export const nl = {
   edErrStartGoal: 'Start en koekje mogen niet op dezelfde plaats.',
   edSolvable: 'Oplosbaar — {n} stappen',
   edUnsolvable: 'Geen oplossing',
+
+  // built-in level names (custom levels keep their user-given name)
+  lvl1: 'Eerste Stapjes',
+  lvl2: 'Om de Hoek',
+  lvl3: 'Koe, Wegwezen!',
+  lvl4: 'Twee Vriendjes',
+  lvl5: 'De Lange Weg',
+  lvl6: 'Twee Koekjes',
+  lvl7: 'Het Kruispunt',
+  lvl8: 'Tussendoortje',
+  lvl9: 'Koekjestuin',
+  lvl10: 'Hongerige Pauw',
+  lvl11: 'Het Doolhof',
+  lvl12: 'Grote Tuin',
 };

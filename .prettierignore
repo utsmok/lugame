@@ -1,0 +1,6 @@
+dist/
+additional_graphics/
+public/
+coverage/
+package-lock.json
+*.md

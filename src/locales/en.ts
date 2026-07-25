@@ -122,4 +122,18 @@ export const en: Translation = {
   edErrStartGoal: 'Start and cookie cannot share a tile.',
   edSolvable: 'Solvable — {n} steps',
   edUnsolvable: 'No solution',
+
+  // built-in level names (custom levels keep their user-given name)
+  lvl1: 'First Steps',
+  lvl2: 'Around the Corner',
+  lvl3: 'Shoo, Cow!',
+  lvl4: 'Two Friends',
+  lvl5: 'The Long Way',
+  lvl6: 'Two Cookies',
+  lvl7: 'The Crossroads',
+  lvl8: 'A Little Snack',
+  lvl9: 'Cookie Garden',
+  lvl10: 'Hungry Peacock',
+  lvl11: 'The Maze',
+  lvl12: 'Big Garden',
 };
