@@ -113,6 +113,12 @@ export class AudioBus {
       if (res.ok) {
         const buf = await res.arrayBuffer()
         this.musicOverride = await ctx.decodeAudioData(buf)
+        // startMusic() likely fired before the override decoded & locked in the
+        // procedural loop — swap the live source to the real track now.
+        if (this.musicEnabled && !this.muted) {
+          this.stopMusicImpl()
+          this.startMusicImpl()
+        }
       }
     } catch {
       /* procedural tune stays in place */

@@ -424,13 +424,13 @@ export class Renderer {
       ctx.imageSmoothingEnabled = false; // crisp pixel tiles
       for (let y = 0; y < H; y += cell) {
         for (let x = 0; x < W; x += cell) {
-          ctx.drawImage(g.grass, x, y, cell, cell);
+          ctx.drawImage(g.grass, x, y, cell + 1, cell + 1); // +1 kills nearest-neighbour seams
         }
       }
       for (let r = 0; r < L.rows; r++) {
         for (let c = 0; c < L.cols; c++) {
           if (pathSet.has(`${c},${r}`)) {
-            ctx.drawImage(g.dirt, ox + c * cell, oy + r * cell, cell, cell);
+            ctx.drawImage(g.dirt, ox + c * cell, oy + r * cell, cell + 1, cell + 1);
           }
         }
       }
