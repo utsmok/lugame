@@ -444,6 +444,12 @@ canvas#board {
 }
 .lvl-pick.locked { opacity: 0.5; cursor: not-allowed; }
 .feathers { color: var(--accent); font-weight: 800; font-size: 0.95rem; padding: 0 0.25rem; white-space: nowrap; }
+.par { color: var(--ink-dim); font-weight: 700; font-size: 0.9rem; padding: 0 0.2rem; white-space: nowrap; }
+.cmd.hint-pulse { animation: hint-pulse 0.7s ease 2; }
+@keyframes hint-pulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 var(--accent); }
+  50% { transform: scale(1.18); box-shadow: 0 0 0 8px rgba(255, 211, 78, 0.5); }
+}
 
 /* ── Hint text ─────────────────────────────────────────── */
 .hint {

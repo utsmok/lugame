@@ -36,6 +36,28 @@ const STEP_DUR: Record<Command, number> = {
 const BUMP_HOLD = 0.55;
 const EASE = 13; // positional/angular easing constant
 
+/** Expand repeat tiles into a flat {cmd, tile} list (tile = source program
+ *  index). A repeat runs the next plain command N times; a repeat with no plain
+ *  follower is a silent no-op. Exported so the hint solver can simulate a
+ *  partially-built program. */
+export function expandTiles(program: ProgramTile[]): { cmd: Command; tile: number }[] {
+  const out: { cmd: Command; tile: number }[] = [];
+  for (let i = 0; i < program.length; i++) {
+    const t = program[i]!;
+    if (isRepeat(t)) {
+      const next = program[i + 1];
+      if (next !== undefined && !isRepeat(next)) {
+        const n = REPEAT_COUNT[t];
+        for (let k = 0; k < n; k++) out.push({ cmd: next, tile: i + 1 });
+        i++;
+      }
+    } else {
+      out.push({ cmd: t, tile: i });
+    }
+  }
+  return out;
+}
+
 export class GameEngine {
   level: Level;
   pathSet: Set<string>;
@@ -168,26 +190,9 @@ export class GameEngine {
    *  highlight). A repeat tile runs the next command N times; a repeat with no
    *  following plain command (or followed by another repeat) is a silent no-op. */
   private expand() {
-    this.execSeq = [];
-    this.stepTile = [];
-    const p = this.program;
-    for (let i = 0; i < p.length; i++) {
-      const tile = p[i]!;
-      if (isRepeat(tile)) {
-        const next = p[i + 1];
-        if (next !== undefined && !isRepeat(next)) {
-          const n = REPEAT_COUNT[tile];
-          for (let k = 0; k < n; k++) {
-            this.execSeq.push(next);
-            this.stepTile.push(i + 1);
-          }
-          i++; // also consume the repeated command
-        }
-      } else {
-        this.execSeq.push(tile);
-        this.stepTile.push(i);
-      }
-    }
+    const pairs = expandTiles(this.program);
+    this.execSeq = pairs.map((p) => p.cmd);
+    this.stepTile = pairs.map((p) => p.tile);
   }
 
   /** Reset robot + animals to the level's initial state (keeps the program). */

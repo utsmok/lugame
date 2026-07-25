@@ -3,6 +3,7 @@ import {
   TILE_EMOJI,
   REPEAT_COUNT,
   isRepeat,
+  type Command,
   type ProgramTile,
   type Level,
 } from '../game/types';
@@ -29,6 +30,7 @@ export interface PaletteCallbacks {
   onToggleSound?: (on: boolean) => void;
   onToggleFreePlay?: (on: boolean) => void;
   onSetTheme?: (id: string) => void;
+  onHint?: () => void;
 }
 
 export interface SettingsState {
@@ -154,6 +156,8 @@ export class PaletteUI {
   private overlayBtn!: HTMLButtonElement;
   private lvlName!: HTMLElement;
   private featherEl!: HTMLElement;
+  private parEl!: HTMLElement;
+  private hintBtn!: HTMLButtonElement;
   private cachedProgram = '';
   private levelIndex = 0;
   private levelTotal = 1;
@@ -206,6 +210,11 @@ export class PaletteUI {
     this.editorBtn.textContent = '\u270F\uFE0F';
     this.editorBtn.setAttribute('aria-label', T.openEditor);
 
+    this.hintBtn = document.createElement('button');
+    this.hintBtn.className = 'topbar-btn hint-btn';
+    this.hintBtn.textContent = '💡';
+    this.hintBtn.setAttribute('aria-label', T.hint);
+
     this.settingsBtn = document.createElement('button');
     this.settingsBtn.className = 'topbar-btn settings-btn';
     this.settingsBtn.textContent = '\u2699\uFE0F';
@@ -216,6 +225,7 @@ export class PaletteUI {
     this.prevBtn.textContent = '\u2039';
     this.prevBtn.setAttribute('aria-label', T.prevLevel);
     this.lvlName = h('span', 'lvl-name');
+    this.parEl = h('span', 'par');
     this.featherEl = h('span', 'feathers');
     this.nextBtn = document.createElement('button');
     this.nextBtn.className = 'lvl-btn next';
@@ -228,9 +238,11 @@ export class PaletteUI {
       spacer,
       this.levelSelectBtn,
       this.editorBtn,
+      this.hintBtn,
       this.settingsBtn,
       this.prevBtn,
       this.lvlName,
+      this.parEl,
       this.nextBtn,
     );
 
@@ -386,6 +398,7 @@ export class PaletteUI {
     this.overlayBtn.addEventListener('click', () => this.advanceOrReplay());
     this.levelSelectBtn.addEventListener('click', () => this.openLevelSelect());
     this.editorBtn.addEventListener('click', () => this.cb.onOpenEditor?.());
+    this.hintBtn.addEventListener('click', () => this.cb.onHint?.());
     this.settingsBtn.addEventListener('click', () => this.openSettings());
     lsClose.addEventListener('click', () => this.closeLevelSelect());
     sClose.addEventListener('click', () => this.closeSettings());
@@ -503,6 +516,22 @@ export class PaletteUI {
     this.featherEl.textContent = `🪶 ${feathers}/${total}`;
     this.featherEl.setAttribute('aria-label', `${T.feathers}: ${feathers} / ${total}`);
     this.rebuildLevelGrid();
+  }
+
+  /** Show the level's par (optimal step count); null hides it. */
+  setPar(n: number | null) {
+    this.parEl.textContent = n === null ? '' : `🎯 ${n}`;
+    this.parEl.setAttribute('aria-label', n === null ? '' : `${T.par}: ${n}`);
+  }
+
+  /** Briefly pulse the command button matching `cmd` (the hint's suggestion). */
+  pulseCommand(cmd: Command | null) {
+    const btn = cmd ? this.cmdButtons.find((b) => b.className.includes(`cmd ${cmd}`)) : null;
+    if (!btn) return;
+    btn.classList.remove('hint-pulse');
+    void btn.offsetWidth; // restart the animation
+    btn.classList.add('hint-pulse');
+    btn.addEventListener('animationend', () => btn.classList.remove('hint-pulse'), { once: true });
   }
 
   setSettings(s: SettingsState) {

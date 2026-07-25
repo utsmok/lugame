@@ -125,15 +125,12 @@ function serialize(s: SolveState): string {
 }
 
 /**
- * Breadth-first search over the four commands. The first time a winning state is
- * reached it is via a shortest command sequence, which is reconstructed from the
- * parent pointers and returned. Returns `null` if no sequence wins.
+ * Breadth-first search from an arbitrary state over the four commands. The
+ * first time a winning state is reached it is via a shortest command sequence,
+ * reconstructed from the parent pointers. Returns `null` if no sequence wins.
  */
-export function solve(level: Level): Command[] | null {
-  const ctx = createSolveContext(level);
-  const start = initialSolveState(level);
+export function solveFrom(ctx: SolveCtx, start: SolveState): Command[] | null {
   if (isWin(start, ctx)) return []; // trivially won (no goals)
-
   const startKey = serialize(start);
   const visited = new Set<string>([startKey]);
   const parent = new Map<string, { from: string; cmd: Command }>();
@@ -166,4 +163,9 @@ export function solve(level: Level): Command[] | null {
     }
   }
   return null;
+}
+
+/** Shortest solution from the level's initial state (the published par). */
+export function solve(level: Level): Command[] | null {
+  return solveFrom(createSolveContext(level), initialSolveState(level));
 }

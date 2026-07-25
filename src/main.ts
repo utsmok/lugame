@@ -1,8 +1,9 @@
 import './style.css';
 
 import { AudioBus, type SfxName } from './game/audio';
-import { GameEngine } from './game/engine';
+import { GameEngine, expandTiles } from './game/engine';
 import { LEVELS } from './game/levels';
+import { solve, solveFrom, createSolveContext, initialSolveState, step } from './game/solve';
 import { Renderer } from './game/render';
 import {
   FALLBACK_FARM_THEME,
@@ -118,6 +119,7 @@ class App {
       onToggleSound: (b) => this.setSetting('sound', b),
       onToggleFreePlay: (b) => this.setSetting('freePlay', b),
       onSetTheme: (id) => this.setTheme(id),
+      onHint: () => this.onHint(),
     });
     this.renderer = new Renderer(this.ui.canvas, this.theme);
     this.renderer.loadDecor();
@@ -129,6 +131,7 @@ class App {
 
     this.refreshLevelList();
     this.ui.setLevelInfo(this.levelIndex, this.levels.length, this.levelName(this.engine.level));
+    this.updatePar();
     this.ui.setSettings(this.settings);
 
     this.resize();
@@ -228,6 +231,23 @@ class App {
     this.engine.holdOnError = this.settings.holdOnError;
     this.wireAudio();
     this.ui.setLevelInfo(index, this.levels.length, this.levelName(this.engine.level));
+    this.updatePar();
+  }
+
+  /** 💡 hint: pulse the next optimal command given the program planned so far. */
+  private onHint() {
+    const lvl = this.engine.level;
+    const ctx = createSolveContext(lvl);
+    let state = initialSolveState(lvl);
+    for (const t of expandTiles(this.engine.program)) state = step(state, t.cmd, ctx);
+    const suffix = solveFrom(ctx, state);
+    this.ui.pulseCommand(suffix && suffix.length ? (suffix[0] ?? null) : null);
+  }
+
+  /** Show the current level's par (optimal step count). */
+  private updatePar() {
+    const sol = solve(this.engine.level);
+    this.ui.setPar(sol ? sol.length : null);
   }
 
   // ── editor ──────────────────────────────────────────────

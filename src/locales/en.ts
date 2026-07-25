@@ -55,6 +55,8 @@ export const en: Translation = {
   freePlayHint: 'Unlock every level.',
   locked: 'Locked',
   feathers: 'Feathers',
+  hint: 'Hint',
+  par: 'Par',
   language: 'Language',
 
   // themes (settings row + theme names + goal/animal labels per docs/theming-design.md)

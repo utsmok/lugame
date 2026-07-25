@@ -53,6 +53,8 @@ export const nl = {
   freePlayHint: 'Zet alle levels open.',
   locked: 'Op slot',
   feathers: 'Veren',
+  hint: 'Hint',
+  par: 'Par',
   language: 'Taal',
 
   // themes (settings row + theme names + goal/animal labels per docs/theming-design.md)
