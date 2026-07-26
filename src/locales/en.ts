@@ -84,8 +84,7 @@ export const en: Translation = {
   cmdLeft: 'Left',
   cmdRight: 'Right',
   cmdFan: 'Shoo!',
-  cmdRepeat2: '×2',
-  cmdRepeat3: '×3',
+  cmdTurnaround: 'Turn',
 
   // level editor — direction buttons
   dirN: '\u2191N',

@@ -21,6 +21,7 @@ import {
   fanCells,
   key,
   samePos,
+  turnAround,
   turnLeft,
   turnRight,
 } from './types';
@@ -44,7 +45,7 @@ export interface SolveCtx {
   allCollected: number; // bitmask of "every goal collected" — the win target
 }
 
-const COMMANDS: readonly Command[] = ['forward', 'left', 'right', 'fan'] as const;
+const COMMANDS: readonly Command[] = ['forward', 'left', 'right', 'fan', 'turnaround'] as const;
 
 export function createSolveContext(level: Level): SolveCtx {
   const goalCount = level.goals.length;
@@ -102,6 +103,8 @@ export function step(s: SolveState, cmd: Command, ctx: SolveCtx): SolveState {
       return { ...s, dir: turnLeft(s.dir) };
     case 'right':
       return { ...s, dir: turnRight(s.dir) };
+    case 'turnaround':
+      return { ...s, dir: turnAround(s.dir) };
     case 'fan': {
       if (ctx.energyEnabled && s.energy <= 0) return s; // too tired: no-op
       const cells = fanCells({ c: s.c, r: s.r }, s.dir);

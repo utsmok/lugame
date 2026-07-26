@@ -4,18 +4,8 @@ export const MAX_ENERGY = 3;
 
 export type Dir = 0 | 90 | 180 | 270; // 0=N(up), 90=E(right), 180=S(down), 270=W(left)
 
-export type Command = 'forward' | 'left' | 'right' | 'fan';
+export type Command = 'forward' | 'left' | 'right' | 'fan' | 'turnaround';
 
-/** Loop tiles for the program queue: age-appropriate FIXED repeats (no counter).
- *  A repeat tile runs the immediately-following command N times total, e.g.
- *  [×2, F] executes F twice. See engine.expand(). */
-export type RepeatTile = 'repeat2' | 'repeat3';
-export type ProgramTile = Command | RepeatTile;
-export const REPEAT_TILES: readonly RepeatTile[] = ['repeat2', 'repeat3'];
-export function isRepeat(t: ProgramTile): t is RepeatTile {
-  return t === 'repeat2' || t === 'repeat3';
-}
-export const REPEAT_COUNT: Record<RepeatTile, number> = { repeat2: 2, repeat3: 3 };
 
 export interface Pos {
   c: number;
@@ -92,6 +82,9 @@ export function turnLeft(d: Dir): Dir {
 export function turnRight(d: Dir): Dir {
   return (((d + 90) % 360) as Dir);
 }
+export function turnAround(d: Dir): Dir {
+  return (((d + 180) % 360) as Dir);
+}
 
 export function addPos(a: Pos, b: Pos): Pos {
   return { c: a.c + b.c, r: a.r + b.r };
@@ -124,15 +117,7 @@ export const COMMAND_EMOJI: Record<Command, string> = {
   left: '↺',
   right: '↻',
   fan: '🪶',
+  turnaround: '🔄',
 };
 
-/** Emoji for any program tile (commands + repeat markers). */
-export const TILE_EMOJI: Record<ProgramTile, string> = {
-  forward: '⬆️',
-  left: '↺',
-  right: '↻',
-  fan: '🪶',
-  repeat2: '🔁',
-  repeat3: '🔁',
-};
 

@@ -4,17 +4,15 @@ import {
   type Dir,
   type GameEvent,
   MAX_ENERGY,
-  REPEAT_COUNT,
-  isRepeat,
   type Level,
   type Phase,
-  type ProgramTile,
   type Pos,
   addPos,
   dirVec,
   fanCells,
   key,
   samePos,
+  turnAround,
   turnLeft,
   turnRight,
 } from './types';
@@ -32,38 +30,17 @@ const STEP_DUR: Record<Command, number> = {
   left: 0.34,
   right: 0.34,
   fan: 0.95, // long enough for the double peacock call + shake
+  turnaround: 0.5,
 };
 const BUMP_HOLD = 0.55;
 const EASE = 13; // positional/angular easing constant
-
-/** Expand repeat tiles into a flat {cmd, tile} list (tile = source program
- *  index). A repeat runs the next plain command N times; a repeat with no plain
- *  follower is a silent no-op. Exported so the hint solver can simulate a
- *  partially-built program. */
-export function expandTiles(program: ProgramTile[]): { cmd: Command; tile: number }[] {
-  const out: { cmd: Command; tile: number }[] = [];
-  for (let i = 0; i < program.length; i++) {
-    const t = program[i]!;
-    if (isRepeat(t)) {
-      const next = program[i + 1];
-      if (next !== undefined && !isRepeat(next)) {
-        const n = REPEAT_COUNT[t];
-        for (let k = 0; k < n; k++) out.push({ cmd: next, tile: i + 1 });
-        i++;
-      }
-    } else {
-      out.push({ cmd: t, tile: i });
-    }
-  }
-  return out;
-}
 
 export class GameEngine {
   level: Level;
   pathSet: Set<string>;
   robot: Robot;
   animals: Animal[] = [];
-  program: ProgramTile[] = [];
+  program: Command[] = [];
   pc = 0;
   phase: Phase = 'editing';
 
@@ -86,8 +63,8 @@ export class GameEngine {
   /** Run-speed multiplier applied to every step duration (1 = normal). */
   speedFactor = 1;
 
-  // Expanded execution sequence (repeat tiles resolved to plain commands) and
-  // the program-tile index each step came from (for the active-chip highlight).
+  // Execution sequence (a snapshot of the program) and the program-tile index
+  // each step came from (for the active-chip highlight).
   private execSeq: Command[] = [];
   private stepTile: number[] = [];
   /** Program-tile index of the step at `pc` (drives the active-chip highlight). */
@@ -127,7 +104,7 @@ export class GameEngine {
   }
 
   // --- program editing (only while editing or error) ---
-  enqueue(cmd: ProgramTile) {
+  enqueue(cmd: Command) {
     if (!this.editable()) return;
     this.program.push(cmd);
     this.emit('click');
@@ -158,7 +135,7 @@ export class GameEngine {
       return;
     }
     this.resetBoard();
-    this.expand();
+    this.prepareSeq();
     this.stepMode = false;
     this.phase = 'running';
     this.pc = 0;
@@ -174,7 +151,7 @@ export class GameEngine {
       return;
     }
     this.resetBoard();
-    this.expand();
+    this.prepareSeq();
     this.stepMode = true;
     this.phase = 'running';
     this.pc = 0;
@@ -187,14 +164,13 @@ export class GameEngine {
     this.doStep();
   }
 
-  /** Resolve the program's repeat tiles into a flat executable command list,
-   *  tracking which program tile each step came from (for the active-chip
-   *  highlight). A repeat tile runs the next command N times; a repeat with no
-   *  following plain command (or followed by another repeat) is a silent no-op. */
-  private expand() {
-    const pairs = expandTiles(this.program);
-    this.execSeq = pairs.map((p) => p.cmd);
-    this.stepTile = pairs.map((p) => p.tile);
+  /** Snapshot the current program into the execution sequence. With repeat
+   *  tiles gone the program is already a flat command list; `stepTile` is an
+   *  identity map (step i → program tile i) so the active-chip highlight and
+   *  hold-on-error marker keep working. */
+  private prepareSeq() {
+    this.execSeq = this.program.slice();
+    this.stepTile = this.execSeq.map((_, i) => i);
   }
 
   /** Reset robot + animals to the level's initial state (keeps the program). */
@@ -312,6 +288,10 @@ export class GameEngine {
         break;
       case 'right':
         this.robot.dir = turnRight(this.robot.dir);
+        this.emit('turn');
+        break;
+      case 'turnaround':
+        this.robot.dir = turnAround(this.robot.dir);
         this.emit('turn');
         break;
       case 'fan': {

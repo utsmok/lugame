@@ -24,12 +24,13 @@ describe('solve', () => {
     expect(solution).toEqual(['forward', 'forward', 'forward'] as Command[]);
     expect(solution!.length).toBe(3);
 
-    // Every emitted command must be one of the four valid commands.
+    // Every emitted command must be one of the five valid commands.
     const valid: Record<Command, true> = {
       forward: true,
       left: true,
       right: true,
       fan: true,
+      turnaround: true,
     };
     for (const cmd of solution!) {
       expect(valid[cmd]).toBe(true);

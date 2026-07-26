@@ -1,7 +1,7 @@
 import './style.css';
 
 import { AudioBus, type SfxName } from './game/audio';
-import { GameEngine, expandTiles } from './game/engine';
+import { GameEngine } from './game/engine';
 import { LEVELS } from './game/levels';
 import { solve, solveFrom, createSolveContext, initialSolveState, step } from './game/solve';
 import { Renderer } from './game/render';
@@ -258,7 +258,7 @@ class App {
     const lvl = this.engine.level;
     const ctx = createSolveContext(lvl);
     let state = initialSolveState(lvl);
-    for (const t of expandTiles(this.engine.program)) state = step(state, t.cmd, ctx);
+    for (const cmd of this.engine.program) state = step(state, cmd, ctx);
     const suffix = solveFrom(ctx, state);
     this.ui.pulseCommand(suffix && suffix.length ? (suffix[0] ?? null) : null);
   }
@@ -343,6 +343,8 @@ class App {
       KeyA: 'left',
       ArrowRight: 'right',
       KeyD: 'right',
+      ArrowDown: 'turnaround',
+      KeyS: 'turnaround',
       KeyF: 'fan',
     };
     window.addEventListener('keydown', (ev) => {

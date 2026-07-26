@@ -1,17 +1,14 @@
 import type { GameEngine } from '../game/engine';
 import {
-  TILE_EMOJI,
-  REPEAT_COUNT,
-  isRepeat,
+  COMMAND_EMOJI,
   type Command,
-  type ProgramTile,
   type Level,
 } from '../game/types';
 import { T, availableLocales, getLocale, setLocale, tr } from '../i18n';
 import { THEME_REGISTRY, getStoredTheme } from '../game/theme';
 
 export interface PaletteCallbacks {
-  onAdd: (cmd: ProgramTile) => void;
+  onAdd: (cmd: Command) => void;
   onRun: () => void;
   onClear: () => void;
   onStep?: () => void;
@@ -309,19 +306,18 @@ export class PaletteUI {
     this.programOverlay.appendChild(poCard);
 
     const palette = h('div', 'palette');
-    const TILE_LABEL: Record<ProgramTile, string> = {
+    const CMD_LABEL: Record<Command, string> = {
       forward: T.cmdForward,
       left: T.cmdLeft,
       right: T.cmdRight,
+      turnaround: T.cmdTurnaround,
       fan: T.cmdFan,
-      repeat2: T.cmdRepeat2,
-      repeat3: T.cmdRepeat3,
     };
-    (['forward', 'left', 'right', 'fan', 'repeat2', 'repeat3'] as ProgramTile[]).forEach((tile) => {
+    (['forward', 'left', 'right', 'turnaround', 'fan'] as Command[]).forEach((tile) => {
       const b = document.createElement('button');
       b.className = `cmd ${tile}`;
-      b.innerHTML = `<span>${TILE_EMOJI[tile]}</span><span class="label">${TILE_LABEL[tile]}</span>`;
-      b.setAttribute('aria-label', TILE_LABEL[tile]);
+      b.innerHTML = `<span>${COMMAND_EMOJI[tile]}</span><span class="label">${CMD_LABEL[tile]}</span>`;
+      b.setAttribute('aria-label', CMD_LABEL[tile]);
       b.addEventListener('click', () => this.cb.onAdd(tile));
       palette.appendChild(b);
       this.cmdButtons.push(b);
@@ -577,7 +573,7 @@ export class PaletteUI {
   /** No-reading onboarding: a translucent finger auto-taps each program tile
    *  in turn, then Run, so a brand-new player sees the gameplay loop. Any real
    *  pointer down cancels it (the player has taken over). */
-  async playOnboarding(program: ProgramTile[]) {
+  async playOnboarding(program: Command[]) {
     const gen = ++this.onboardGen;
     const finger = this.ensureFinger();
     finger.style.display = 'block';
@@ -662,7 +658,7 @@ export class PaletteUI {
   private programOverlayGrid!: HTMLElement;
   private programOverlayClose!: HTMLButtonElement;
   private allChips: HTMLElement[] = [];
-  private prevGroups: { cmd: ProgramTile; len: number }[] = [];
+  private prevGroups: { cmd: Command; len: number }[] = [];
 
   sync(e: GameEngine) {
     const sig = e.program.join(',');
@@ -704,7 +700,7 @@ export class PaletteUI {
     this.wasWon = won;
   }
 
-  private rebuildChips(program: ProgramTile[]) {
+  private rebuildChips(program: Command[]) {
     this.programEl.innerHTML = '';
     this.programOverlayGrid.innerHTML = '';
     this.allChips = [];
@@ -771,14 +767,13 @@ export class PaletteUI {
   }
 
   /** Group consecutive identical commands into runs (for condensing). */
-  private groupsOf(program: ProgramTile[]): { cmd: ProgramTile; start: number; len: number }[] {
-    const groups: { cmd: ProgramTile; start: number; len: number }[] = [];
+  private groupsOf(program: Command[]): { cmd: Command; start: number; len: number }[] {
+    const groups: { cmd: Command; start: number; len: number }[] = [];
     for (let i = 0; i < program.length;) {
-      const tile = program[i]!;
+      const cmd = program[i]!;
       let len = 1;
-      // only condense consecutive identical PLAIN commands; repeats stay solo
-      while (!isRepeat(tile) && i + len < program.length && program[i + len] === tile) len++;
-      groups.push({ cmd: tile, start: i, len });
+      while (i + len < program.length && program[i + len] === cmd) len++;
+      groups.push({ cmd, start: i, len });
       i += len;
     }
     return groups;
@@ -786,8 +781,8 @@ export class PaletteUI {
 
   /** True if prev and current groups share the same command at each index (safe to animate counts). */
   private cmdsAligned(
-    a: { cmd: ProgramTile; len: number }[],
-    b: { cmd: ProgramTile; len: number }[],
+    a: { cmd: Command; len: number }[],
+    b: { cmd: Command; len: number }[],
   ): boolean {
     const n = Math.min(a.length, b.length);
     for (let k = 0; k < n; k++) {
@@ -809,10 +804,10 @@ export class PaletteUI {
     );
   }
 
-  private makeChip(tile: ProgramTile, first: number, len: number, big: boolean): HTMLElement {
+  private makeChip(tile: Command, first: number, len: number, big: boolean): HTMLElement {
     const chip = h('div', `chip ${tile}` + (big ? ' big' : ''));
-    const badgeN = isRepeat(tile) ? REPEAT_COUNT[tile] : len;
-    let inner = TILE_EMOJI[tile];
+    const badgeN = len;
+    let inner = COMMAND_EMOJI[tile];
     inner += `<span class="chip-badge" aria-hidden="true">\u00D7${badgeN}</span>`;
     inner += `<span class="chip-remove" aria-label="${T.removeStep}">\u2715</span>`;
     chip.innerHTML = inner;
